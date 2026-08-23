@@ -7,7 +7,7 @@
 【アプリの目的】
   少人数の囲碁リーグ戦を、グループLINEで共有しながら管理する。
   対局結果・順位・手合い割を全員がリアルタイムで確認できることを重視する。
-  現時点では6名での利用を想定しているが、今後の拡張余地を残した設計とする。
+  現時点では7名での利用を想定しているが、今後の拡張余地を残した設計とする。
 
 【セキュリティ】
   - 合言葉認証あり（初回のみ入力）
@@ -38,7 +38,7 @@
   ・機能を追加・変更したら「主な機能」と「今後の改良候補」を合わせて更新する
 
 【主な機能（現時点）】
-  - 対局者設定（現時点では6名、拡張余地あり）
+  - 対局者設定（現時点では7名、拡張余地あり）
   - 結果入力（中押し・時間切れ・目数差・持碁）
   - 順位表示（勝数順/勝率順の切り替え対応）
   - 対局履歴（多視点表示・修正機能付き）
@@ -268,6 +268,7 @@
         <div class="fg"><label>対局者 4</label><input id="p3" type="text"></div>
         <div class="fg"><label>対局者 5</label><input id="p4" type="text"></div>
         <div class="fg"><label>対局者 6</label><input id="p5" type="text"></div>
+        <div class="fg"><label>対局者 7</label><input id="p6" type="text"></div>
         <button class="btn" id="save-players">保存して全員に同期</button>
 
         <h3 style="margin-top:24px">初期手合い設定</h3>
@@ -470,7 +471,7 @@ const firebaseConfig = {
 
 // ---------- State ----------
 let state = {
-  players: ["対局者1", "対局者2", "対局者3", "対局者4", "対局者5", "対局者6"],
+  players: ["対局者1", "対局者2", "対局者3", "対局者4", "対局者5", "対局者6", "対局者7"],
   history: [],
   levels:  {},  // ペアごとの手合い { "西|山田": 1, ... }
   streaks: {},  // ペアごとの現在の連勝数  { "西|山田": 3, ... }
@@ -606,14 +607,14 @@ function fillPlayerInputs() {
 }
 fillPlayerInputs();
 
-[0,1,2,3,4,5].forEach(i => {
+[0,1,2,3,4,5,6].forEach(i => {
   const el = document.getElementById("p" + i);
   el.addEventListener("focus", () => editingPlayers = true);
   el.addEventListener("blur",  () => editingPlayers = false);
 });
 
 document.getElementById("save-players").addEventListener("click", () => {
-  state.players = [0,1,2,3,4,5].map(i => {
+  state.players = [0,1,2,3,4,5,6].map(i => {
     const v = document.getElementById("p" + i).value.trim();
     return v || `対局者${i+1}`;
   });
