@@ -50,6 +50,16 @@
   - イレギュラー対局対応（記録された手合いが、その対局の時点でのペアの正規の手合いと
       異なる場合、連勝カウント・手合い変更の判定から除外する。対局結果自体は勝敗記録・
       順位・履歴に通常どおり反映され、履歴一覧には「イレギュラー」バッジを表示する）
+  - 指導対局対応（結果入力・修正時にチェックを入れると、その対局を指導対局として記録できる。
+      手合いは通常どおり選択して記録するが、連勝カウント・手合い変更の判定には使わない
+      （イレギュラー対局と同様の扱い）。順位表・勝敗グラフ・上手下手成績・互先黒白成績・
+      半目職人ランキング、および履歴タブの個人成績集計（相手別成績・最近の流れ・決着内容）
+      からも除外される。対局結果自体は履歴に「📚指導対局」バッジ付きで残る）
+  - 無勝負対応（指導対局の途中で下手に悪手が出て打ち直しになった場合、結果種別で
+      「無勝負」を選ぶと勝者・敗者を決めずに記録できる。無勝負は指導対局に限られるため、
+      選択すると指導対局チェックが自動でON・ロックされる。手合いは通常どおり選択して
+      記録するが、他の指導対局と同様に連勝・手合い・各種成績の集計には使われない。
+      履歴には「無勝負」バッジのみ表示し、指導対局バッジとは重複表示しない）
   - 初期手合い設定（ペアごとに手合いを手動設定可能）
   - シーズンリセット（履歴をFirebaseに保存後リセット・手合いは引き継ぎ）
   - 過去シーズンのアーカイブ表示（Firebase go-league/seasons/ に保存）
@@ -191,6 +201,8 @@
     .badge-t { background: #c0392b; }
     .badge-f { background: #7f8c8d; }
     .badge-irregular { background: #d35400; }
+    .badge-shidou { background: #2980b9; }
+    .badge-mushoubu { background: #7f5aa0; }
 
     /* Toast */
     #toast {
@@ -309,6 +321,7 @@
           <option value="jikan">時間切れ</option>
           <option value="moku">目数差</option>
           <option value="jigo">持碁（黒勝ち）</option>
+          <option value="mushoubu">無勝負（指導のため打ち直し）</option>
         </select>
       </div>
       <div class="fg"><label id="label-left">勝者 👑</label><select id="winner"></select></div>
@@ -335,6 +348,10 @@
         <div id="loser-teai-row" style="margin-top:8px;font-size:0.88rem;color:#555;display:none">
           <span id="label-right-teai">敗者</span>の手合い：<strong id="loser-teai-val"></strong>
         </div>
+      </div>
+      <div class="fg" style="display:flex;align-items:center;gap:8px;background:#eef5fb;border:1px solid #cfe3f2;border-radius:6px;padding:10px 12px">
+        <input type="checkbox" id="shidou-flag" style="width:auto;flex-shrink:0">
+        <label for="shidou-flag" style="margin:0;font-weight:normal;font-size:0.85rem;color:#2c3e50">📚 指導対局として記録する（連勝・手合い変更や順位表・成績の集計には使いません）</label>
       </div>
       <button class="btn" id="add-match">登録する（全員に即時反映）</button>
     </div>
@@ -409,6 +426,7 @@
         <option value="jikan">時間切れ</option>
         <option value="moku">目数差</option>
         <option value="jigo">持碁（黒勝ち）</option>
+        <option value="mushoubu">無勝負（指導のため打ち直し）</option>
       </select>
     </div>
     <div class="fg"><label id="edit-label-left">勝者 👑</label><select id="edit-winner"></select></div>
@@ -435,6 +453,10 @@
       <div id="edit-teai-pair-row" style="margin-top:8px;font-size:0.88rem;color:#555;display:none">
         <span id="edit-label-teai-pair">相手</span>の手合い：<strong id="edit-teai-pair-val"></strong>
       </div>
+    </div>
+    <div class="fg" style="display:flex;align-items:center;gap:8px;background:#eef5fb;border:1px solid #cfe3f2;border-radius:6px;padding:10px 12px">
+      <input type="checkbox" id="edit-shidou" style="width:auto;flex-shrink:0">
+      <label for="edit-shidou" style="margin:0;font-weight:normal;font-size:0.85rem;color:#2c3e50">📚 指導対局として記録する（連勝・手合い変更や順位表・成績の集計には使いません）</label>
     </div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn" id="edit-save">保存する</button>
@@ -685,6 +707,25 @@ document.getElementById("winner-teai").addEventListener("change", function() {
 document.getElementById("result-type").addEventListener("change", function() {
   const t = this.value;
   document.getElementById("moku-fg").style.display = t === "moku" ? "" : "none";
+
+  // 無勝負は「勝者/敗者」の概念がないため、ラベルを対局者A/Bに切り替える。
+  // また無勝負は指導対局でのみ起こりうるため、指導対局チェックを自動でON・ロックする。
+  const shidouEl = document.getElementById("shidou-flag");
+  if (t === "mushoubu") {
+    document.getElementById("label-left").textContent = "対局者A";
+    document.getElementById("label-right").textContent = "対局者B";
+    document.getElementById("label-left-teai").textContent = "対局者Aの手合い";
+    document.getElementById("label-right-teai").textContent = "対局者B";
+    shidouEl.checked = true;
+    shidouEl.disabled = true;
+  } else {
+    document.getElementById("label-left").textContent = "勝者 👑";
+    document.getElementById("label-right").textContent = "敗者";
+    document.getElementById("label-left-teai").textContent = "勝者の手合い";
+    document.getElementById("label-right-teai").textContent = "敗者";
+    shidouEl.disabled = false;
+  }
+
   // 持碁選択時は手合い選択肢を黒番（下手）のみに絞る
   const teaiSel = document.getElementById("winner-teai");
   const allOptions = [
@@ -742,6 +783,18 @@ document.getElementById("add-match").addEventListener("click", () => {
     m = { id:crypto.randomUUID(), type:"jigo", p1:state.players[i1], p2:state.players[i2],
           teai1:ta1, teai2:ta2, date:d };
     showToast(`${m.p1} vs ${m.p2}：持碁を登録しました`);
+  } else if (type === "mushoubu") {
+    const v1 = document.getElementById("winner").value;
+    const v2 = document.getElementById("loser").value;
+    if (!v1 || !v2) { showToast("対局者を選択してください"); return; }
+    const i1 = +v1, i2 = +v2;
+    if (i1 === i2) { showToast("同じ人は選べません"); return; }
+    const ta1 = document.getElementById("winner-teai").value;
+    if (!ta1) { showToast("手合いを選択してください"); return; }
+    const ta2 = TEAI_PAIR[ta1] || "";
+    m = { id:crypto.randomUUID(), type:"mushoubu", p1:state.players[i1], p2:state.players[i2],
+          teai1:ta1, teai2:ta2, date:d };
+    showToast(`${m.p1} vs ${m.p2}：無勝負として記録しました`);
   } else {
     const wv = document.getElementById("winner").value;
     const lv = document.getElementById("loser").value;
@@ -771,6 +824,7 @@ document.getElementById("add-match").addEventListener("click", () => {
       showToast(`${m.winner} の勝利（中押し）を登録！`);
     }
   }
+  if (document.getElementById("shidou-flag").checked) m.shidou = true;
   // 対局登録前の順位をスナップショットしておく。
   // 登録後にFirebaseのonValueが即座に発火して再レンダリングされるため、
   // renderStandings内ではなくここで保存しないと順位変動が正しく表示されない。
@@ -792,6 +846,8 @@ function resetInputForm() {
   document.getElementById("loser-teai-val").textContent = "";
   document.getElementById("moku-fg").style.display = "none";
   document.getElementById("mokusuu").value = "";
+  document.getElementById("shidou-flag").checked = false;
+  document.getElementById("shidou-flag").disabled = false;
   // ラベルを初期状態に戻す
   document.getElementById("label-left").textContent      = "勝者 👑";
   document.getElementById("label-right").textContent     = "敗者";
@@ -859,6 +915,7 @@ function calcStats(filterCategory) {
   const s = {};
   state.players.forEach(p => s[p] = { name:p, wins:0, losses:0, total:0 });
   state.history.forEach(m => {
+    if (m.shidou) return; // 指導対局は順位表・勝敗グラフの集計から除外
     if (filterCategory && filterCategory !== "all" && matchTeaiCategory(m) !== filterCategory) return;
     if (m.type === "jigo") {
       const jw = jigoWinner(m);
@@ -1000,10 +1057,11 @@ function renderStandings() {
 }
 
 function badgeHTML(m) {
-  if (m.type==="jigo")    return `<span class="badge badge-j">持碁</span>`;
-  if (m.type==="chuoshi") return `<span class="badge badge-c">中押し</span>`;
-  if (m.type==="jikan")   return `<span class="badge badge-t">時間切</span>`;
-  if (m.type==="fumei")   return `<span class="badge badge-f">不明</span>`;
+  if (m.type==="jigo")     return `<span class="badge badge-j">持碁</span>`;
+  if (m.type==="mushoubu") return `<span class="badge badge-mushoubu">無勝負</span>`;
+  if (m.type==="chuoshi")  return `<span class="badge badge-c">中押し</span>`;
+  if (m.type==="jikan")    return `<span class="badge badge-t">時間切</span>`;
+  if (m.type==="fumei")    return `<span class="badge badge-f">不明</span>`;
   return `<span class="badge badge-m">${m.mokusuu}目差</span>`;
 }
 
@@ -1049,6 +1107,7 @@ function renderHanme() {
   const counts = {};
   state.players.forEach(p => counts[p] = 0);
   state.history.forEach(m => {
+    if (m.shidou) return; // 指導対局は除外
     if (m.type === "moku" && m.mokusuu === 0.5 && counts[m.winner] !== undefined) {
       counts[m.winner]++;
     }
@@ -1087,6 +1146,7 @@ function calcRoleStats() {
   const s = {};
   state.players.forEach(p => s[p] = { upperW:0, upperL:0, lowerW:0, lowerL:0 });
   state.history.forEach(m => {
+    if (m.shidou) return; // 指導対局は除外
     if (m.type === "jigo") {
       // 持碁は下手（黒番）の勝ちとして登録されるため、上手・下手の役割は確定している
       const jw = jigoWinner(m);
@@ -1117,6 +1177,7 @@ function calcColorStats() {
   const s = {};
   state.players.forEach(p => s[p] = { blackW:0, blackL:0, whiteW:0, whiteL:0 });
   state.history.forEach(m => {
+    if (m.shidou) return; // 指導対局は除外
     if (m.type === "jigo") return; // 持碁は互先にならないため対象外
     const tw = m.teai_w;
     if (tw === "互黒") {
@@ -1135,6 +1196,7 @@ function calcColorStats() {
 function calcRoleOverall() {
   let upperWins = 0, lowerWins = 0;
   state.history.forEach(m => {
+    if (m.shidou) return; // 指導対局は除外
     if (m.type === "jigo") {
       const jw = jigoWinner(m);
       if (!jw) return;
@@ -1153,6 +1215,7 @@ function calcRoleOverall() {
 function calcColorOverall() {
   let blackWins = 0, whiteWins = 0;
   state.history.forEach(m => {
+    if (m.shidou) return; // 指導対局は除外
     if (m.type === "jigo") return;
     if (m.teai_w === "互黒")      blackWins++;
     else if (m.teai_w === "互白") whiteWins++;
@@ -1240,7 +1303,7 @@ function renderGonosata() {
   state.players.forEach(p => lastPlayed[p] = null);
 
   state.history.forEach(m => {
-    const involved = m.type === "jigo" ? [m.p1, m.p2] : [m.winner, m.loser];
+    const involved = (m.type === "jigo" || m.type === "mushoubu") ? [m.p1, m.p2] : [m.winner, m.loser];
     const val = dateSortValue(m.date);
     involved.forEach(p => {
       if (!(p in lastPlayed)) return;
@@ -1300,7 +1363,7 @@ function linkify(str) {
 function getMatchPlayers(m) {
   // 登録順で固定した [左対局者, 右対局者, 左が勝者か]
   const ps = state.players;
-  if (m.type === "jigo") {
+  if (m.type === "jigo" || m.type === "mushoubu") {
     const i1 = ps.indexOf(m.p1), i2 = ps.indexOf(m.p2);
     return i1 <= i2
       ? { left: m.p1, right: m.p2, leftTeai: m.teai1, rightTeai: m.teai2, winner: null }
@@ -1587,7 +1650,7 @@ function matchListHTML(filtered, anchorPlayer) {
     return `
       <div class="hist-item" style="flex-direction:column;align-items:stretch">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div>${leftName} vs ${rightName} ${badgeHTML(m)}${currentIrregularMatches.has(m) ? '<span class="badge badge-irregular" title="記録された手合いが、その時点の正規の手合いと異なるため、連勝・手合いには反映されていません">イレギュラー</span>' : ""}<br>
+          <div>${leftName} vs ${rightName} ${badgeHTML(m)}${(m.shidou && m.type !== "mushoubu") ? '<span class="badge badge-shidou" title="指導対局として記録されており、連勝・手合いや順位表・各種成績の集計には使われていません">📚指導対局</span>' : ""}${currentIrregularMatches.has(m) ? '<span class="badge badge-irregular" title="記録された手合いが、その時点の正規の手合いと異なるため、連勝・手合いには反映されていません">イレギュラー</span>' : ""}<br>
           <span class="hist-date">${m.date}</span></div>
           <div style="display:flex;gap:6px;flex-shrink:0">
             <button class="comment-btn" data-id="${m.id || idx}" style="background:#f0ede4;color:#888;border:1px solid #ddd;padding:5px 8px;border-radius:4px;font-size:0.78rem;cursor:pointer">💬</button>
@@ -1639,24 +1702,28 @@ function renderHistory() {
     // 対局日の新しい順に表示（同じ日付なら登録順＝同日内の対局順を維持）
     .sort((a, b) => dateSortValue(b.m.date) - dateSortValue(a.m.date));
 
+  // 指導対局は「勝敗・順位に関わらない学びの対局」として個人成績の集計からは除外する
+  // （対局履歴の一覧そのものにはバッジ付きで残す。matchListHTMLはallFilteredを使い続ける）
+  const statsFiltered = allFiltered.filter(({ m }) => !m.shidou);
+
   // ===== 未選択: 全体表示 =====
   if (selectedPlayers.length === 0) {
     if (allFiltered.length === 0) {
       el.innerHTML = '<p style="color:#999">対局記録はありません。</p>';
       return;
     }
-    el.innerHTML = decisionBreakdownOverallHTML(allFiltered) + matchListHTML(allFiltered);
+    el.innerHTML = decisionBreakdownOverallHTML(statsFiltered) + matchListHTML(allFiltered);
 
   // ===== 1人選択: 個人視点 =====
   } else if (selectedPlayers.length === 1) {
     const player = selectedPlayers[0];
-    const recent = allFiltered;
+    const recent = statsFiltered;
     const { w, l, j } = flowStats(recent, player);
     const jigoStr = j > 0 ? ` ${j}持碁` : "";
 
     // 相手別成績
     const opponents = {};
-    allFiltered.forEach(({ m, idx }) => {
+    statsFiltered.forEach(({ m, idx }) => {
       const opp = (m.type === "jigo")
         ? (m.p1 === player ? m.p2 : m.p1)
         : (m.winner === player ? m.loser : m.winner);
@@ -1685,7 +1752,7 @@ function renderHistory() {
     html += oppHTML || '<p style="color:#999">データなし</p>';
     // 決着内容
     html += sectionHead("決着内容");
-    html += decisionBreakdownHTML(allFiltered, player);
+    html += decisionBreakdownHTML(statsFiltered, player);
     // 対局履歴
     html += sectionHead("対局履歴");
     if (allFiltered.length === 0) html += '<p style="color:#999">対局記録はありません。</p>';
@@ -1696,11 +1763,11 @@ function renderHistory() {
   // ===== 2人選択: ペア視点 =====
   } else {
     const [pA, pB] = selectedPlayers;
-    const recent = allFiltered;
+    const recent = statsFiltered;
     const { w, l, j } = flowStats(recent, pA);
     const jigoStr = j > 0 ? ` ${j}持碁` : "";
 
-    let html = recordBanner(allFiltered);
+    let html = recordBanner(statsFiltered);
     // 最近の流れ
     html += sectionHead(`最近の流れ（${pA}視点）`);
     html += `<div style="background:#f9f8f4;border-radius:6px;padding:12px 14px;margin-bottom:4px">
@@ -1709,7 +1776,7 @@ function renderHistory() {
     </div>`;
     // 決着内容
     html += sectionHead("決着内容");
-    html += decisionBreakdownHTML(allFiltered, pA);
+    html += decisionBreakdownHTML(statsFiltered, pA);
     // 直接対局履歴
     html += sectionHead("対局履歴");
     if (allFiltered.length === 0) html += '<p style="color:#999">対局記録はありません。</p>';
@@ -1839,6 +1906,7 @@ function pairKey(pA, pB) {
 // 既存履歴からlevels/streaksを計算して移行（後方互換用）
 function calcFromHistory(pA, pB) {
   const matches = chronologicalHistory().filter(m => {
+    if (m.shidou) return false; // 指導対局・無勝負は連勝・手合いの計算対象外
     if (m.type === "jigo") return (m.p1===pA&&m.p2===pB)||(m.p1===pB&&m.p2===pA);
     return (m.winner===pA&&m.loser===pB)||(m.winner===pB&&m.loser===pA);
   });
@@ -1873,6 +1941,7 @@ function migrateFromHistory() {
 // 対局（イレギュラー対局）をそこへ集め、その対局については連勝・手合いの更新をスキップする。
 // 対局結果自体（勝敗記録・順位・履歴）は別途、通常どおり反映される。
 function updateLevelsAndStreaks(m, target, irregularSet) {
+  if (m.shidou) return; // 指導対局は連勝・手合い変更の対象外（イレギュラー扱いにはしない）
   const levels  = target ? target.levels  : state.levels;
   const streaks = target ? target.streaks : state.streaks;
   let winner;
@@ -2174,9 +2243,9 @@ function openEditModal(m, idx) {
   document.getElementById("edit-result").value = m.type || "";
 
   // 対局者セット
-  const isJigo = m.type === "jigo";
-  const p1 = isJigo ? m.p1 : m.winner;
-  const p2 = isJigo ? m.p2 : m.loser;
+  const isP1P2 = m.type === "jigo" || m.type === "mushoubu";
+  const p1 = isP1P2 ? m.p1 : m.winner;
+  const p2 = isP1P2 ? m.p2 : m.loser;
   const i1 = state.players.indexOf(p1);
   const i2 = state.players.indexOf(p2);
   document.getElementById("edit-winner").value = i1 >= 0 ? i1 : "";
@@ -2186,9 +2255,14 @@ function openEditModal(m, idx) {
   document.getElementById("edit-mokusuu").value = m.mokusuu || "";
   document.getElementById("edit-moku-fg").style.display = m.type === "moku" ? "" : "none";
 
+  // 指導対局フラグ（無勝負は指導対局に限られるため、常にON・ロックする）
+  const editShidouEl = document.getElementById("edit-shidou");
+  editShidouEl.checked = !!m.shidou;
+  editShidouEl.disabled = m.type === "mushoubu";
+
   // 手合い
-  const tw = isJigo ? (m.teai1 || "") : (m.teai_w || "");
-  const tl = isJigo ? (m.teai2 || "") : (m.teai_l || "");
+  const tw = isP1P2 ? (m.teai1 || "") : (m.teai_w || "");
+  const tl = isP1P2 ? (m.teai2 || "") : (m.teai_l || "");
   document.getElementById("edit-teai").value = tw;
   if (tw) {
     document.getElementById("edit-teai-pair-val").textContent = tl;
@@ -2197,11 +2271,18 @@ function openEditModal(m, idx) {
     document.getElementById("edit-teai-pair-row").style.display = "none";
   }
 
-  // ラベルは常に固定
-  document.getElementById("edit-label-left").textContent  = "勝者 👑";
-  document.getElementById("edit-label-right").textContent = "敗者";
-  document.getElementById("edit-label-teai").textContent  = "勝者の手合い";
-  document.getElementById("edit-label-teai-pair").textContent = "敗者";
+  // 無勝負のみ「対局者A/B」表記、それ以外は「勝者/敗者」表記で固定
+  if (m.type === "mushoubu") {
+    document.getElementById("edit-label-left").textContent  = "対局者A";
+    document.getElementById("edit-label-right").textContent = "対局者B";
+    document.getElementById("edit-label-teai").textContent  = "対局者Aの手合い";
+    document.getElementById("edit-label-teai-pair").textContent = "対局者B";
+  } else {
+    document.getElementById("edit-label-left").textContent  = "勝者 👑";
+    document.getElementById("edit-label-right").textContent = "敗者";
+    document.getElementById("edit-label-teai").textContent  = "勝者の手合い";
+    document.getElementById("edit-label-teai-pair").textContent = "敗者";
+  }
 
   document.getElementById("edit-modal").style.display = "";
 
@@ -2220,10 +2301,25 @@ function openEditModal(m, idx) {
   autoGrowTextarea(document.getElementById("edit-comment-text"));
 }
 
-// 結果種別変更で目数差欄を切替
+// 結果種別変更で目数差欄・ラベル・指導対局ロックを切替
 document.getElementById("edit-result").addEventListener("change", function() {
   const t = this.value;
   document.getElementById("edit-moku-fg").style.display = t === "moku" ? "" : "none";
+  const editShidouEl = document.getElementById("edit-shidou");
+  if (t === "mushoubu") {
+    document.getElementById("edit-label-left").textContent  = "対局者A";
+    document.getElementById("edit-label-right").textContent = "対局者B";
+    document.getElementById("edit-label-teai").textContent  = "対局者Aの手合い";
+    document.getElementById("edit-label-teai-pair").textContent = "対局者B";
+    editShidouEl.checked = true;
+    editShidouEl.disabled = true;
+  } else {
+    document.getElementById("edit-label-left").textContent  = "勝者 👑";
+    document.getElementById("edit-label-right").textContent = "敗者";
+    document.getElementById("edit-label-teai").textContent  = "勝者の手合い";
+    document.getElementById("edit-label-teai-pair").textContent = "敗者";
+    editShidouEl.disabled = false;
+  }
 });
 
 // 手合い変更で相手手合いを自動表示
@@ -2284,6 +2380,10 @@ document.getElementById("edit-save").addEventListener("click", () => {
     updated = { ...orig, type:"jigo", p1:state.players[+wv], p2:state.players[+lv],
                 teai1:tw, teai2:tl, date:d };
     delete updated.winner; delete updated.loser; delete updated.teai_w; delete updated.teai_l; delete updated.mokusuu;
+  } else if (type === "mushoubu") {
+    updated = { ...orig, type:"mushoubu", p1:state.players[+wv], p2:state.players[+lv],
+                teai1:tw, teai2:tl, date:d };
+    delete updated.winner; delete updated.loser; delete updated.teai_w; delete updated.teai_l; delete updated.mokusuu;
   } else if (type === "moku") {
     const mk = parseFloat(document.getElementById("edit-mokusuu").value);
     if (isNaN(mk) || mk <= 0) { showToast("目数差を正しく入力してください"); return; }
@@ -2295,6 +2395,10 @@ document.getElementById("edit-save").addEventListener("click", () => {
                 teai_w:tw, teai_l:tl, date:d };
     delete updated.p1; delete updated.p2; delete updated.teai1; delete updated.teai2; delete updated.mokusuu;
   }
+
+  // 指導対局フラグ
+  if (document.getElementById("edit-shidou").checked) updated.shidou = true;
+  else delete updated.shidou;
 
   state.history[editTargetIdx] = updated;
 
