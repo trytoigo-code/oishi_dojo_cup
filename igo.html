@@ -59,7 +59,7 @@
       「無勝負」を選ぶと勝者・敗者を決めずに記録できる。無勝負は指導対局に限られるため、
       選択すると指導対局チェックが自動でON・ロックされる。手合いは通常どおり選択して
       記録するが、他の指導対局と同様に連勝・手合い・各種成績の集計には使われない。
-      履歴には「無勝負」バッジのみ表示し、指導対局バッジとは重複表示しない）
+      履歴には「無勝負」バッジと「📚指導対局」バッジを両方表示する）
   - 初期手合い設定（ペアごとに手合いを手動設定可能）
   - シーズンリセット（履歴をFirebaseに保存後リセット・手合いは引き継ぎ）
   - 過去シーズンのアーカイブ表示（Firebase go-league/seasons/ に保存）
@@ -1650,7 +1650,7 @@ function matchListHTML(filtered, anchorPlayer) {
     return `
       <div class="hist-item" style="flex-direction:column;align-items:stretch">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div>${leftName} vs ${rightName} ${badgeHTML(m)}${(m.shidou && m.type !== "mushoubu") ? '<span class="badge badge-shidou" title="指導対局として記録されており、連勝・手合いや順位表・各種成績の集計には使われていません">📚指導対局</span>' : ""}${currentIrregularMatches.has(m) ? '<span class="badge badge-irregular" title="記録された手合いが、その時点の正規の手合いと異なるため、連勝・手合いには反映されていません">イレギュラー</span>' : ""}<br>
+          <div>${leftName} vs ${rightName} ${badgeHTML(m)}${m.shidou ? '<span class="badge badge-shidou" title="指導対局として記録されており、連勝・手合いや順位表・各種成績の集計には使われていません">📚指導対局</span>' : ""}${currentIrregularMatches.has(m) ? '<span class="badge badge-irregular" title="記録された手合いが、その時点の正規の手合いと異なるため、連勝・手合いには反映されていません">イレギュラー</span>' : ""}<br>
           <span class="hist-date">${m.date}</span></div>
           <div style="display:flex;gap:6px;flex-shrink:0">
             <button class="comment-btn" data-id="${m.id || idx}" style="background:#f0ede4;color:#888;border:1px solid #ddd;padding:5px 8px;border-radius:4px;font-size:0.78rem;cursor:pointer">💬</button>
