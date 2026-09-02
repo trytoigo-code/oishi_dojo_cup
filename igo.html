@@ -76,6 +76,14 @@
       全体（黒番勝ち/白番勝ちの局数・割合）と対局者ごとの勝敗を集計。色不明の「互先」は対象外）
   - 対局コメント（履歴から各対局に一言メモを後から追記可能。短文はそのまま表示、長文は折りたたみ）
   - コメントへのリアクション（👍😄😮🔥の4種。誰が押したかFirebaseで全員に同期）
+  - 📚過去タブ（シーズンを選ぶと、当時の順位表・履歴を読み取り専用で閲覧可能。
+      順位表サブタブ：勝敗グラフ・順位・上手下手成績・互先黒白成績・半目職人
+      （ご無沙汰ランキングは「今日から何日前」が過去シーズンには無意味なため非表示）
+      履歴サブタブ：対局者フィルター（1人/2人選択）・コメント（棋譜リンク等）・
+      イレギュラー/指導対局バッジも表示するが、削除・修正・コメント投稿・
+      リアクション追加はできない（読み取り専用）
+      過去シーズンのデータ表示中は、内部的にstateを一時的にアーカイブデータへ
+      差し替えて既存の集計ロジックを再利用している（表示後は必ず現在のstateに復元）
   - Firebase によるリアルタイム同期
   - データエクスポート（設定タブからJSONファイルとしてダウンロード。日付入りファイル名で保存）
 
@@ -252,6 +260,7 @@
     <button class="tab-btn" data-tab="input">📝結果入力</button>
     <button class="tab-btn" data-tab="history">📜履歴</button>
     <button class="tab-btn" data-tab="handicap">🤝手合い</button>
+    <button class="tab-btn" data-tab="archive">📚過去</button>
     <button class="tab-btn" data-tab="setup">⚙️設定</button>
   </div>
 
@@ -321,7 +330,7 @@
           <option value="jikan">時間切れ</option>
           <option value="moku">目数差</option>
           <option value="jigo">持碁（黒勝ち）</option>
-          <option value="mushoubu">無勝負（待ったあり指導碁で待った発生）</option>
+          <option value="mushoubu">無勝負（指導のため打ち直し）</option>
         </select>
       </div>
       <div class="fg"><label id="label-left">勝者 👑</label><select id="winner"></select></div>
@@ -409,6 +418,15 @@
       </div>
     </div>
 
+    <!-- 過去のシーズン（読み取り専用） -->
+    <div class="panel" id="panel-archive">
+      <h3>過去のシーズン</h3>
+      <p class="note">シーズンを選ぶと、そのシーズン当時の順位表・履歴を読み取り専用で見られます。</p>
+      <div id="archive-season-select"></div>
+      <div id="archive-subtabs" style="display:none;gap:8px;margin:16px 0 4px"></div>
+      <div id="archive-content"></div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /app -->
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo" style="display:none">元に戻す</button></div>
@@ -426,7 +444,7 @@
         <option value="jikan">時間切れ</option>
         <option value="moku">目数差</option>
         <option value="jigo">持碁（黒勝ち）</option>
-        <option value="mushoubu">無勝負（待ったあり指導碁で待った発生）</option>
+        <option value="mushoubu">無勝負（指導のため打ち直し）</option>
       </select>
     </div>
     <div class="fg"><label id="edit-label-left">勝者 👑</label><select id="edit-winner"></select></div>
@@ -617,6 +635,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+    if (btn.dataset.tab === "archive") loadArchiveSeasons();
   });
 });
 
@@ -2489,6 +2508,483 @@ document.getElementById("toast-undo").addEventListener("click", () => {
     showToast("元に戻しました");
   }
 });
+
+// ============================================================
+//  📚過去のシーズン（読み取り専用）
+//  過去シーズンの表示中は、既存の集計ロジック（calcStats等）をそのまま
+//  再利用するため、withArchiveState()内でグローバルのstateを一時的に
+//  アーカイブデータへ差し替える。表示が終わったら必ず元のstateに戻す。
+// ============================================================
+let archiveSeasonsData     = null;  // Firebaseから取得したシーズン一覧 { "1": {...}, ... }
+let archiveSelectedSeason  = null;  // 選択中のシーズン番号（文字列）
+let archiveSubTab          = "standings"; // "standings" | "history"
+let archiveSortMode        = "wins";
+let archiveSelectedPlayers = [];
+let archiveIrregularMatches = new Set();
+
+function loadArchiveSeasons() {
+  const el = document.getElementById("archive-season-select");
+  if (!el) return;
+  if (!seasonsRef) {
+    el.innerHTML = `<p class="note" style="margin:0">Firebase未設定のため、過去シーズンは表示できません。</p>`;
+    return;
+  }
+  el.innerHTML = `<p class="note" style="margin:0">読み込み中…</p>`;
+  seasonsRef.once("value", snap => {
+    const data = snap.val() || {};
+    archiveSeasonsData = data;
+    const seasonNums = Object.keys(data).map(Number).filter(n => !isNaN(n)).sort((a,b) => b - a);
+    if (seasonNums.length === 0) {
+      el.innerHTML = `<p class="note" style="margin:0">まだ過去のシーズンはありません（新シーズンを始めると、ここに記録が残ります）。</p>`;
+      document.getElementById("archive-subtabs").style.display = "none";
+      document.getElementById("archive-content").innerHTML = "";
+      return;
+    }
+    if (archiveSelectedSeason === null || !seasonNums.map(String).includes(archiveSelectedSeason)) {
+      archiveSelectedSeason = String(seasonNums[0]);
+    }
+    el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px">` +
+      seasonNums.map(n => `<button class="filter-btn archive-season-btn ${String(n)===archiveSelectedSeason?"active":""}" data-season="${n}">シーズン${n}</button>`).join("") +
+      `</div>`;
+    el.querySelectorAll(".archive-season-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        archiveSelectedSeason = btn.dataset.season;
+        archiveSelectedPlayers = [];
+        el.querySelectorAll(".archive-season-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderArchiveSelected();
+      });
+    });
+    renderArchiveSelected();
+  });
+}
+
+// 過去シーズンのデータで一時的にstateを差し替えてfnを実行し、必ず元のstateに戻す
+function withArchiveState(fn) {
+  const season = archiveSeasonsData && archiveSeasonsData[archiveSelectedSeason];
+  if (!season) return;
+  const backup = state;
+  state = {
+    players: Array.isArray(season.players) ? season.players : [],
+    history: Array.isArray(season.history) ? season.history : [],
+    levels:  (season.levels && typeof season.levels === "object") ? season.levels : {},
+    streaks: {},
+    season:  season.season
+  };
+  try { fn(); } finally { state = backup; }
+}
+
+function renderArchiveSelected() {
+  const subtabsEl = document.getElementById("archive-subtabs");
+  const contentEl = document.getElementById("archive-content");
+  const season = archiveSeasonsData && archiveSeasonsData[archiveSelectedSeason];
+  if (!season) { subtabsEl.style.display = "none"; contentEl.innerHTML = ""; return; }
+
+  subtabsEl.style.display = "flex";
+  subtabsEl.innerHTML = `
+    <button class="filter-btn archive-subtab-btn ${archiveSubTab==="standings"?"active":""}" data-subtab="standings">🏆順位表</button>
+    <button class="filter-btn archive-subtab-btn ${archiveSubTab==="history"?"active":""}" data-subtab="history">📜履歴</button>`;
+  subtabsEl.querySelectorAll(".archive-subtab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      archiveSubTab = btn.dataset.subtab;
+      renderArchiveSelected();
+    });
+  });
+
+  const total = Array.isArray(season.history) ? season.history.length : 0;
+
+  if (archiveSubTab === "standings") {
+    contentEl.innerHTML = `
+      <p class="note" style="margin-top:0">シーズン${archiveSelectedSeason}（終了：${season.endDate || "不明"}／全${total}局）の記録です（読み取り専用）。</p>
+      <div id="archive-wins-chart" style="margin-bottom:24px"></div>
+      <h3 style="margin-top:0">順位</h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="filter-btn ${archiveSortMode==="wins"?"active":""}" id="archive-sort-wins">勝数順</button>
+        <button class="filter-btn ${archiveSortMode==="rate"?"active":""}" id="archive-sort-rate">勝率順</button>
+      </div>
+      <div id="archive-rank-list"></div>
+      <h3 style="margin-top:24px">🎓 上手・下手成績</h3>
+      <p class="note">手合い差のある対局（互先を除く）で、上手・下手それぞれの勝敗。</p>
+      <div id="archive-role-stats-overall"></div>
+      <div style="font-size:0.72rem;color:#999;font-family:sans-serif;margin-bottom:6px">対局者ごと</div>
+      <div id="archive-role-stats-list"></div>
+      <h3 style="margin-top:24px">⚫⚪ 互先 黒白成績</h3>
+      <p class="note">互先のうち白番・黒番が分かっている対局の勝敗（色不明の互先は含みません）。</p>
+      <div id="archive-color-stats-overall"></div>
+      <div style="font-size:0.72rem;color:#999;font-family:sans-serif;margin-bottom:6px">対局者ごと</div>
+      <div id="archive-color-stats-list"></div>
+      <div id="archive-hanme-section" style="display:none">
+        <h3 style="margin-top:24px">🎯 半目職人</h3>
+        <p class="note">半目差での勝利数ランキング。</p>
+        <div id="archive-hanme-list"></div>
+      </div>`;
+    withArchiveState(() => {
+      renderArchiveWinsChart();
+      renderArchiveStandings();
+      renderArchiveRoleColorStats();
+      renderArchiveHanme();
+    });
+    document.getElementById("archive-sort-wins").addEventListener("click", () => {
+      archiveSortMode = "wins";
+      document.getElementById("archive-sort-wins").classList.add("active");
+      document.getElementById("archive-sort-rate").classList.remove("active");
+      withArchiveState(() => renderArchiveStandings());
+    });
+    document.getElementById("archive-sort-rate").addEventListener("click", () => {
+      archiveSortMode = "rate";
+      document.getElementById("archive-sort-rate").classList.add("active");
+      document.getElementById("archive-sort-wins").classList.remove("active");
+      withArchiveState(() => renderArchiveStandings());
+    });
+  } else {
+    contentEl.innerHTML = `
+      <p class="note" style="margin-top:0">シーズン${archiveSelectedSeason}（終了：${season.endDate || "不明"}／全${total}局）の対局履歴です（読み取り専用。削除・修正・コメント投稿はできません）。</p>
+      <div id="archive-history-filter" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+      <div id="archive-history-list"></div>`;
+    withArchiveState(() => {
+      renderArchiveHistoryFilter();
+      renderArchiveHistory();
+    });
+  }
+}
+
+// ---------- 過去シーズン：順位表サブタブ ----------
+function renderArchiveWinsChart() {
+  const el = document.getElementById("archive-wins-chart");
+  if (!el) return;
+  const stats = calcStats(); // フィルターなし（すべて）
+  if (stats.every(p => p.total === 0)) {
+    el.innerHTML = `<p style="color:#999;font-size:0.88rem">対局記録がありません。</p>`;
+    return;
+  }
+  const commonMax = Math.max(...stats.map(p => p.wins), ...stats.map(p => p.losses), 1);
+  const AREA_H = 110;
+  el.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:stretch">
+      ${stats.map(p => {
+        const wH = Math.round(p.wins   / commonMax * AREA_H);
+        const lH = Math.round(p.losses / commonMax * AREA_H);
+        const winsInside   = wH >= 16;
+        const lossesInside = lH >= 16;
+        return `
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <div style="height:${AREA_H}px;width:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center">
+              ${p.wins > 0 ? `
+                ${!winsInside ? `<div style="font-size:0.68rem;color:#2e7d5e;font-weight:bold;margin-bottom:1px">${p.wins}</div>` : ""}
+                <div style="height:${wH}px;width:100%;background:#2e7d5e;border-radius:4px 4px 0 0;display:flex;align-items:center;justify-content:center">
+                  ${winsInside ? `<span style="color:#fff;font-size:0.72rem;font-weight:bold">${p.wins}</span>` : ""}
+                </div>` : ""}
+            </div>
+            <div style="width:100%;border-top:2px solid #888"></div>
+            <div style="font-size:0.78rem;font-weight:bold;color:#2c3e50;padding:4px 0;text-align:center">${p.name}</div>
+            <div style="height:${AREA_H}px;width:100%;display:flex;flex-direction:column;align-items:stretch">
+              ${p.losses > 0 ? `
+                <div style="height:${lH}px;background:#c0392b;border-radius:0 0 4px 4px;display:flex;align-items:center;justify-content:center">
+                  ${lossesInside ? `<span style="color:#fff;font-size:0.72rem;font-weight:bold">${p.losses}</span>` : ""}
+                </div>
+                ${!lossesInside ? `<div style="font-size:0.68rem;color:#c0392b;font-weight:bold;text-align:center;margin-top:1px">${p.losses}</div>` : ""}` : ""}
+            </div>
+          </div>`;
+      }).join("")}
+    </div>
+    <div style="display:flex;gap:12px;margin-top:8px;font-size:0.72rem;color:#777">
+      <span><span style="display:inline-block;width:10px;height:10px;background:#2e7d5e;border-radius:2px;margin-right:3px"></span>勝（上）</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#c0392b;border-radius:2px;margin-right:3px"></span>敗（下）</span>
+    </div>`;
+}
+
+function renderArchiveStandings() {
+  const el = document.getElementById("archive-rank-list");
+  if (!el) return;
+  const raw = calcStats();
+  const sorted = raw.slice().sort((a,b) => {
+    if (archiveSortMode === "rate") {
+      const rA = a.total > 0 ? a.wins / a.total : 0;
+      const rB = b.total > 0 ? b.wins / b.total : 0;
+      return rB - rA || b.wins - a.wins;
+    }
+    return b.wins - a.wins || a.losses - b.losses;
+  });
+  const medals = ["🥇","🥈","🥉","","",""];
+  el.innerHTML = sorted.map((p,i) => {
+    const pct = Math.min((p.total/100)*100, 100);
+    return `
+      <div class="rank-row">
+        <div class="rank-num">${medals[i] || (i+1)}</div>
+        <div class="rank-info">
+          <div><strong>${p.name}</strong>
+          <span class="rank-record"> ${p.wins}勝 ${p.losses}敗${winRate(p.wins, p.losses)}</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        </div>
+      </div>`;
+  }).join("") || `<p style="color:#999;font-size:0.88rem">対局記録がありません。</p>`;
+}
+
+function renderArchiveRoleColorStats() {
+  const roleEl  = document.getElementById("archive-role-stats-list");
+  const colorEl = document.getElementById("archive-color-stats-list");
+  const roleOverallEl  = document.getElementById("archive-role-stats-overall");
+  const colorOverallEl = document.getElementById("archive-color-stats-overall");
+  if (!roleEl || !colorEl) return;
+
+  if (roleOverallEl) {
+    const { upperWins, lowerWins } = calcRoleOverall();
+    roleOverallEl.innerHTML = overallBoxHTML("全体の勝敗", "上手の勝ち", upperWins, "下手の勝ち", lowerWins)
+      || `<p style="color:#999;font-size:0.88rem">該当する対局がありません。</p>`;
+  }
+  if (colorOverallEl) {
+    const { blackWins, whiteWins } = calcColorOverall();
+    colorOverallEl.innerHTML = overallBoxHTML("全体の勝敗", "⚫黒番の勝ち", blackWins, "⚪白番の勝ち", whiteWins)
+      || `<p style="color:#999;font-size:0.88rem">該当する対局がありません。</p>`;
+  }
+
+  const role  = calcRoleStats();
+  const color = calcColorStats();
+
+  const roleRows = state.players.filter(p => {
+    const r = role[p];
+    return r && (r.upperW + r.upperL + r.lowerW + r.lowerL) > 0;
+  });
+  roleEl.innerHTML = roleRows.length ? roleRows.map(p => {
+    const r = role[p];
+    const upperTotal = r.upperW + r.upperL;
+    const lowerTotal = r.lowerW + r.lowerL;
+    const upperStr = upperTotal ? `${r.upperW}勝${r.upperL}敗${winRate(r.upperW, r.upperL)}` : "対局なし";
+    const lowerStr = lowerTotal ? `${r.lowerW}勝${r.lowerL}敗${winRate(r.lowerW, r.lowerL)}` : "対局なし";
+    return `
+      <div class="rank-row">
+        <div class="rank-info">
+          <div><strong>${p}</strong></div>
+          <div class="rank-record">上手：${upperStr}　／　下手：${lowerStr}</div>
+        </div>
+      </div>`;
+  }).join("") : `<p style="color:#999;font-size:0.88rem">該当する対局がありません。</p>`;
+
+  const colorRows = state.players.filter(p => {
+    const c = color[p];
+    return c && (c.blackW + c.blackL + c.whiteW + c.whiteL) > 0;
+  });
+  colorEl.innerHTML = colorRows.length ? colorRows.map(p => {
+    const c = color[p];
+    const blackTotal = c.blackW + c.blackL;
+    const whiteTotal = c.whiteW + c.whiteL;
+    const blackStr = blackTotal ? `${c.blackW}勝${c.blackL}敗${winRate(c.blackW, c.blackL)}` : "対局なし";
+    const whiteStr = whiteTotal ? `${c.whiteW}勝${c.whiteL}敗${winRate(c.whiteW, c.whiteL)}` : "対局なし";
+    return `
+      <div class="rank-row">
+        <div class="rank-info">
+          <div><strong>${p}</strong></div>
+          <div class="rank-record">⚫黒：${blackStr}　／　⚪白：${whiteStr}</div>
+        </div>
+      </div>`;
+  }).join("") : `<p style="color:#999;font-size:0.88rem">該当する対局がありません。</p>`;
+}
+
+function renderArchiveHanme() {
+  const section = document.getElementById("archive-hanme-section");
+  const el = document.getElementById("archive-hanme-list");
+  if (!section || !el) return;
+
+  const counts = {};
+  state.players.forEach(p => counts[p] = 0);
+  state.history.forEach(m => {
+    if (m.shidou) return;
+    if (m.type === "moku" && m.mokusuu === 0.5 && counts[m.winner] !== undefined) {
+      counts[m.winner]++;
+    }
+  });
+
+  const rows = state.players
+    .map(p => ({ name: p, count: counts[p] }))
+    .filter(r => r.count > 0)
+    .sort((a, b) => b.count - a.count);
+
+  if (rows.length === 0) { section.style.display = "none"; return; }
+  section.style.display = "";
+
+  const medals = ["🥇","🥈","🥉"];
+  el.innerHTML = rows.map((r, i) => `
+    <div class="rank-row">
+      <div class="rank-num">${medals[i] || (i + 1)}</div>
+      <div class="rank-info">
+        <div><strong>${r.name}</strong></div>
+        <div class="rank-record">半目勝ち ${r.count}回</div>
+      </div>
+    </div>`).join("");
+}
+
+// ---------- 過去シーズン：履歴サブタブ（読み取り専用） ----------
+function renderArchiveHistoryFilter() {
+  const fc = document.getElementById("archive-history-filter");
+  if (!fc) return;
+  const ps = state.players;
+  const allBtn = `<button class="filter-btn${archiveSelectedPlayers.length===0?" active":""}" data-action="all">すべて</button>`;
+  const playerBtns = ps.map(p =>
+    `<button class="filter-btn player-btn${archiveSelectedPlayers.includes(p)?" active":""}" data-player="${p}">${p}</button>`
+  ).join("");
+  fc.innerHTML = `<div style="margin-bottom:6px">${allBtn}</div><div style="display:flex;flex-wrap:wrap;gap:6px">${playerBtns}</div>`;
+
+  fc.querySelector("[data-action='all']").addEventListener("click", () => {
+    archiveSelectedPlayers = [];
+    withArchiveState(() => { renderArchiveHistoryFilter(); renderArchiveHistory(); });
+  });
+  fc.querySelectorAll(".player-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const p = btn.dataset.player;
+      if (archiveSelectedPlayers.includes(p)) archiveSelectedPlayers = archiveSelectedPlayers.filter(x => x !== p);
+      else if (archiveSelectedPlayers.length < 2) archiveSelectedPlayers.push(p);
+      else archiveSelectedPlayers = [archiveSelectedPlayers[1], p];
+      withArchiveState(() => { renderArchiveHistoryFilter(); renderArchiveHistory(); });
+    });
+  });
+}
+
+// 2人選択時の対戦成績バナー（過去シーズン用。selectedPlayersではなく引数のplayersを使う）
+function archiveRecordBannerHTML(filtered, players) {
+  const rec = calcRecord(filtered);
+  const [leftP, rightP] = players;
+  const lw = rec[leftP]?.wins ?? 0, ll = rec[leftP]?.losses ?? 0;
+  const rw = rec[rightP]?.wins ?? 0, rl = rec[rightP]?.losses ?? 0;
+  return `<div style="background:#f1f0ea;border:1px solid #e0dbcd;border-radius:6px;padding:8px 14px;margin-bottom:12px;font-size:0.9rem;color:#2c3e50;display:flex;justify-content:space-around;text-align:center">
+    <div><strong>${leftP}</strong><br>${lw}勝 ${ll}敗${winRate(lw, ll)}</div>
+    <div style="color:#999;align-self:center">vs</div>
+    <div><strong>${rightP}</strong><br>${rw}勝 ${rl}敗${winRate(rw, rl)}</div>
+  </div>`;
+}
+
+// 通常の対局履歴リストHTML（読み取り専用版。削除・修正・コメント投稿ボタンは出さない。
+// 既存のコメント本文・棋譜等のリンク・リアクション件数は表示する）
+function archiveMatchListHTML(filtered, anchorPlayer) {
+  const teai = (t) => t ? `<span style="font-size:0.78rem;color:#888;font-weight:normal">（${t}）</span>` : "";
+  return filtered.map(({ m }) => {
+    let { left, right, leftTeai, rightTeai, winner } = getMatchPlayers(m);
+
+    if (anchorPlayer && right === anchorPlayer) {
+      [left, right] = [right, left];
+      [leftTeai, rightTeai] = [rightTeai, leftTeai];
+      if (winner === "left") winner = "right";
+      else if (winner === "right") winner = "left";
+    }
+
+    let effectiveWinner = winner;
+    if (m.type === "jigo") {
+      const jw = jigoWinner(m);
+      if (jw) effectiveWinner = jw === left ? "left" : "right";
+    }
+    const leftName  = effectiveWinner === "left"  ? `👑 <strong>${left}</strong>${teai(leftTeai)}`
+                    : effectiveWinner === "right" ? `${left}${teai(leftTeai)}`
+                    : `<strong>${left}</strong>${teai(leftTeai)}`;
+    const rightName = effectiveWinner === "right" ? `👑 <strong>${right}</strong>${teai(rightTeai)}`
+                    : effectiveWinner === "left"  ? `${right}${teai(rightTeai)}`
+                    : `<strong>${right}</strong>${teai(rightTeai)}`;
+
+    const raw = m.comment || "";
+    let commentHTML = "";
+    if (raw) {
+      const text      = typeof raw === "object" ? (raw.text   || "") : raw;
+      const author    = typeof raw === "object" ? (raw.author || "") : "";
+      const reactions = (typeof raw === "object" && raw.reactions) ? raw.reactions : {};
+      if (text) {
+        const label = author ? `<strong>${author}</strong>：` : "";
+        const reactionPills = REACTION_EMOJIS.map(e => {
+          const names = reactions[e] || [];
+          if (!names.length) return "";
+          return `<span style="display:inline-flex;align-items:center;gap:3px;background:#f0ede4;border:1px solid #e0dbcd;border-radius:12px;padding:2px 8px;font-size:0.8rem" title="${names.join("・")}">${e} <span style="color:#555;font-size:0.75rem">${names.length}</span></span>`;
+        }).join("");
+        commentHTML = `<div style="margin-top:6px">
+          <div style="font-size:0.8rem;color:#666;font-style:italic;white-space:pre-wrap">💬 ${linkify(`${label}${text}`)}</div>
+          ${reactionPills ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${reactionPills}</div>` : ""}
+        </div>`;
+      }
+    }
+
+    return `
+      <div class="hist-item" style="flex-direction:column;align-items:stretch">
+        <div>${leftName} vs ${rightName} ${badgeHTML(m)}${m.shidou ? '<span class="badge badge-shidou" title="指導対局">📚指導対局</span>' : ""}${archiveIrregularMatches.has(m) ? '<span class="badge badge-irregular" title="イレギュラー対局">イレギュラー</span>' : ""}<br>
+        <span class="hist-date">${m.date}</span></div>
+        ${commentHTML}
+      </div>`;
+  }).join("");
+}
+
+function renderArchiveHistory() {
+  archiveIrregularMatches = computeIrregularMatches();
+  const el = document.getElementById("archive-history-list");
+  if (!el) return;
+
+  const allFiltered = state.history
+    .map((m, idx) => ({ m, idx }))
+    .filter(({ m }) => {
+      if (archiveSelectedPlayers.length === 0) return true;
+      const { left, right } = getMatchPlayers(m);
+      if (archiveSelectedPlayers.length === 1)
+        return left === archiveSelectedPlayers[0] || right === archiveSelectedPlayers[0];
+      return (left === archiveSelectedPlayers[0] && right === archiveSelectedPlayers[1]) ||
+             (left === archiveSelectedPlayers[1] && right === archiveSelectedPlayers[0]);
+    })
+    .sort((a, b) => dateSortValue(b.m.date) - dateSortValue(a.m.date));
+
+  const statsFiltered = allFiltered.filter(({ m }) => !m.shidou);
+
+  if (archiveSelectedPlayers.length === 0) {
+    if (allFiltered.length === 0) { el.innerHTML = '<p style="color:#999">対局記録はありません。</p>'; return; }
+    el.innerHTML = decisionBreakdownOverallHTML(statsFiltered) + archiveMatchListHTML(allFiltered);
+
+  } else if (archiveSelectedPlayers.length === 1) {
+    const player = archiveSelectedPlayers[0];
+    const recent = statsFiltered;
+    const { w, l, j } = flowStats(recent, player);
+    const jigoStr = j > 0 ? ` ${j}持碁` : "";
+
+    const opponents = {};
+    statsFiltered.forEach(({ m, idx }) => {
+      const opp = (m.type === "jigo") ? (m.p1 === player ? m.p2 : m.p1) : (m.winner === player ? m.loser : m.winner);
+      if (!opponents[opp]) opponents[opp] = [];
+      opponents[opp].push({ m, idx });
+    });
+    const oppHTML = Object.entries(opponents).map(([opp, matches]) => {
+      const { w: ow, l: ol, j: oj } = flowStats(matches, player);
+      const jigoStr2 = oj > 0 ? ` ${oj}持碁` : "";
+      const flow = flowSymbolsHTML(matches, player);
+      return `<div style="padding:8px 0;border-bottom:1px solid #f0ede3">
+        <div><strong>vs ${opp}</strong>　${ow}勝 ${ol}敗${jigoStr2}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:1px;margin-top:4px">${flow}</div>
+      </div>`;
+    }).join("");
+
+    let html = '';
+    html += sectionHead("最近の流れ");
+    html += `<div style="background:#f9f8f4;border-radius:6px;padding:12px 14px;margin-bottom:4px">
+      <div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px">${flowSymbolsHTML(recent, player)}</div>
+      <div style="font-size:0.85rem;color:#666">${w}勝 ${l}敗${jigoStr}（${recent.length}局）</div>
+    </div>`;
+    html += sectionHead("相手別成績");
+    html += oppHTML || '<p style="color:#999">データなし</p>';
+    html += sectionHead("決着内容");
+    html += decisionBreakdownHTML(statsFiltered, player);
+    html += sectionHead("対局履歴");
+    html += allFiltered.length === 0 ? '<p style="color:#999">対局記録はありません。</p>' : archiveMatchListHTML(allFiltered, player);
+    el.innerHTML = html;
+
+  } else {
+    const [pA] = archiveSelectedPlayers;
+    const recent = statsFiltered;
+    const { w, l, j } = flowStats(recent, pA);
+    const jigoStr = j > 0 ? ` ${j}持碁` : "";
+
+    let html = archiveRecordBannerHTML(statsFiltered, archiveSelectedPlayers);
+    html += sectionHead(`最近の流れ（${pA}視点）`);
+    html += `<div style="background:#f9f8f4;border-radius:6px;padding:12px 14px;margin-bottom:4px">
+      <div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px">${flowSymbolsHTML(recent, pA)}</div>
+      <div style="font-size:0.85rem;color:#666">${pA} ${w}勝 ${l}敗${jigoStr}（${recent.length}局）</div>
+    </div>`;
+    html += sectionHead("決着内容");
+    html += decisionBreakdownHTML(statsFiltered, pA);
+    html += sectionHead("対局履歴");
+    html += allFiltered.length === 0 ? '<p style="color:#999">対局記録はありません。</p>' : archiveMatchListHTML(allFiltered, pA);
+    el.innerHTML = html;
+  }
+}
 
 // Initial render
 renderAll();
