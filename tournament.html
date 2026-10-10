@@ -1,0 +1,2326 @@
+<!--
+================================================================================
+  このアプリについて
+  大会トーナメント表 — 設計思想と共同編集の進め方
+================================================================================
+
+【アプリの目的】
+  「大石道場杯」のような単発の大会（8人・勝ち抜き方式）の対戦表を、
+  仲間内でリアルタイムに共有しながら記録・閲覧するためのアプリ。
+  紙のトーナメント表（1回戦→準決勝→決勝、3位決定戦、5位・7位決定戦）を
+  デジタルで再現する。
+
+【対戦形式（固定・8人）】
+  本戦：1回戦(4試合) → 準決勝(2試合) → 決勝 → 優勝・準優勝
+        準決勝の敗者2名 → 3位決定戦 → 3位・4位
+  下位：1回戦の敗者4名 → 下位準決勝(2試合)
+        下位準決勝の勝者2名 → 5位決定戦 → 5位・6位
+        下位準決勝の敗者2名 → 7位決定戦 → 7位・8位
+
+  対局者は⚙️設定タブ→管理者の仕事内の「対局者名簿」（名前・大石道場杯段位・
+  管理用ID＜先頭8文字を表示＞を管理する名簿。管理者のみ編集可能）にあらかじめ
+  登録しておき、大会ごとの8人はその名簿から選ぶ。名前を後から打ち直しても同一人物
+  として通算成績が引き継がれるよう、名前ではなくIDで対局者を識別する。各行右端の
+  ☰ハンドルを長押ししてドラッグすると対局者の並び順（シード順）
+  を入れ替えられる。大会名は「大石道場杯」固定で、開催回（第◯回）と開催日を
+  設定タブで入力する。
+
+  結果の入力は、トーナメント図の名前枠を直接タップして行う。
+  両者の名前が揃った枠をタップするとその対局の勝者に選べる
+  （本戦・3位決定戦・5位決定戦・7位決定戦すべてに対応）。
+  その内容をもとに紙のトーナメント表のような罫線でつないだブラケット図を
+  自動で描画する。罫線は常にグレーで骨組みを描き、実際に勝ち上がった
+  経路だけを赤で上書きする（負けた側の線は最後までグレーのまま）ため、
+  誰が勝ったかが一目でわかる。
+  上位ラウンドの結果を変更した場合、その結果に依存する下流の試合結果は
+  自動的にクリアされる。
+  決定した順位（優勝〜8位）は、トーナメント図の下に一覧表示される。
+
+【利用環境】
+  - スマホ利用を最優先とする（モバイルファースト）
+  - GitHub Pages でホスティング（単一 tournament.html で完結）
+  - Firebase Realtime Database によるリアルタイム同期
+
+【セキュリティ】
+  - 合言葉認証あり（他アプリと共通の合言葉）
+  - 認証情報はブラウザのlocalStorageに保存される
+
+【技術構成】
+  - バニラJS（React・Babel 不使用）
+  - Firebase Realtime Database（igo.html/mahjong.htmlと同じプロジェクトを使用）
+  - 外部ライブラリなし・ビルド不要・1ファイル完結
+  - 新しい技術より、継続して利用しやすい構成を優先する
+
+【共同編集の進め方】
+  このアプリは、ユーザーと生成AIが対話しながら少しずつ育てていくものです。
+  以下は、その共同作業をうまく続けるための共通認識です。
+
+  ・このアプリの文脈と歴史を理解した上で提案する
+  ・変更の意図と影響範囲を共有しながら進める
+  ・小さな積み重ねを大切にし、一度に大きく変えない
+  ・既存の操作感や雰囲気はできるだけ引き継ぐ
+  ・読みやすく・触りやすく・壊れにくい構成を選ぶ
+  ・新しい技術より、長く使い続けられることを優先する
+  ・機能を追加・変更したら「主な機能」と「今後の改良候補」を合わせて更新する
+
+【主な機能（現時点）】
+  - 対局者名簿（⚙️設定タブ→管理者の仕事内。名前・大石道場杯段位を登録・編集・削除
+    できる。各行に管理用ID（先頭8文字を表示）を併記。大会をまたいで同一人物として
+    扱われるための土台。管理者のみ編集可能）
+  - 大会設定（大会名は「大石道場杯」固定。⚙️設定タブで開催回（第◯回）・
+    開催日を入力し、対局者8名は名簿から選ぶ。各行右端の☰ハンドルを長押しして
+    ドラッグすると対局者の並び順（シード順）を入れ替え可能）
+  - 結果入力（トーナメント図の名前枠を直接タップして勝者選択。
+    本戦だけでなく3位・5位・7位決定戦の図でも同様にタップで選択できる）
+  - トーナメント図（罫線でつないだブラケット表示。本戦・3位決定戦・
+    5位決定戦・7位決定戦。各ラウンドの対局候補も名前枠として表示され、
+    両者揃った枠はタップで勝者選択できる。勝ち上がった経路だけ赤で表示され、
+    負けた側はグレーのまま残るので、誰が勝ったかが一目でわかる）
+  - 順位表示（トーナメント図の下に優勝〜8位を一覧表示。各対局者の大石道場杯段位も
+    併記される。未定の順位は「未定」。1・2位は昇段、7・8位は降段のバッジ表示）
+  - 今回の成績（🏆トーナメントタブ。今大会での対局者ごとの勝敗数・勝率を表示。
+    決着済みの対局のみを集計し、勝ち数が多い順に並ぶ）
+  - 全員の次回大石道場杯段位一覧（1・2位＝昇段／7・8位＝降段／3〜6位＝変更なしを反映。
+    「新しい大会にする」時に名簿へ直接反映される。今回の対局者に段位が1人も設定されて
+    いない場合は、この一覧と、順位の昇段・降段の注記・バッジを非表示にする）
+  - 3位決定戦・5位決定戦・7位決定戦の自動組み合わせ
+  - 結果だけリセット（対局者は保持）
+  - 新しい大会にする（現在の大会をアーカイブして白紙に戻す。対局者と、
+    今回の昇段・降段結果を反映した大石道場杯段位は名簿を通じて自動で引き継がれる。
+    開催回・開催日は毎回入力し直す。月1開催などの継続的な運用を想定）
+  - 完全リセット（現在の大会と過去のアーカイブをすべて消去して真っさらに戻す。
+    対局者名簿は保持される。テスト中のやり直し用）
+  - 8人以外の大会記録の簡易追加（⚙️設定タブの管理者の仕事。8人固定のブラケット形式に
+    当てはまらない大会のための機能。今の形式になる前の過去大会だけでなく、参加人数が
+    8人と異なる今後の大会にも使える。大会名は「大石道場杯」固定。トーナメント図は作らず、
+    対局者ごとの勝敗数（任意で順位も）を名簿から選んで入力する。全期間の通算成績に合算される。
+    登録済みの記録は同じ設定タブから一覧で確認でき、入力ミスがあれば編集・削除できる）
+  - 📚過去の大会タブ（誰でも閲覧可能）
+      全期間の通算成績（過去の全アーカイブ＋進行中の大会を合算し、対局者ごとに勝敗数・勝率を集計。
+      名簿IDが分かる大会はIDで、この機能導入前の古いアーカイブは名前の完全一致でフォールバック集計）
+      過去の大会結果一覧（「結果を見る」でトーナメント図・順位を今の画面と同じ形式で
+      展開表示。読み取り専用。新しい大会順に表示。直近6件のみ表示し、「もっと見る」で全件展開）
+  - スイス式（⚙️設定タブの「形式」で切り替え。7・9・10人など人数自由の大会用。
+    回戦数は通常3回戦（例外的に4回戦）で、8人のときは通常の勝ち抜き形式を使う。
+    奇数人数の不戦勝（お休み）の人は自動で決まり、その回戦の結果を入れる前なら手動で変更できる。
+    参加者は名簿から選んで並び順を決め、回戦数は手入力する。🏆トーナメントタブに
+    対局者×回戦のマス目表と回戦タブ・対局カードが出て、勝者の名前をタップして結果を
+    入力する。次の回戦は前の回戦の結果が揃ってから「組み合わせを作る」で生成。
+    組み合わせは公式のスイス式（成績でグループ分けし、上位半分×下位半分でクロス。
+    再戦回避。奇数人数は1人が不戦勝＝勝ち数に数える）、順位は勝数→直接対決→BH
+    （対戦相手の勝数合計）→並び順。段位の昇段・降段は行わない。「新しい大会にする」で
+    アーカイブされ、📚過去の大会と全期間の通算成績にも反映される）
+  - Firebase によるリアルタイム同期
+  - データエクスポート（設定タブからJSONファイルとしてダウンロード。日付入りファイル名で保存）
+
+【今後の改良候補】
+  - 8人勝ち抜きの人数可変（4人・16人など。人数自由の大会はスイス式で対応済み）
+  - スイス式の不戦勝の人が、後日実際に対局した場合の扱い（通算成績には不戦勝を数えていない）
+  - スイス式の過去大会の記録の修正・削除（現状は読み取り専用）
+  - 不戦勝（空き枠）対応
+  - 対局日・対局場所などのメモ欄
+================================================================================
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大会トーナメント表</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", YuGothic, sans-serif;
+    background: #fcfaf2; color: #333;
+  }
+  #app { max-width: 500px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
+  #header { background: #2c3e50; color: #fff; padding: 14px 16px 10px; text-align: center; position: sticky; top: 0; z-index: 101; }
+  #header h1 { font-size: 1.1rem; letter-spacing: 2px; font-weight: bold; }
+  #sync-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 5px; }
+  #sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; display: inline-block; }
+  #sync-label { font-size: 0.7rem; color: #aed6f1; }
+
+  #nav { display: flex; background: #f1f0ea; border-bottom: 1px solid #e0dbcd; position: sticky; top: 0; z-index: 100; }
+  .tab-btn {
+    flex: 1; padding: 11px 4px; border: none; background: none;
+    font-size: 0.85rem; font-weight: bold; color: #777; cursor: pointer;
+    border-bottom: 3px solid transparent;
+  }
+  .tab-btn.active { color: #2c3e50; background: #fff; border-bottom-color: #b89752; }
+
+  #content { padding: 18px 16px; flex: 1; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  h3 { border-left: 4px solid #b89752; padding-left: 8px; margin-bottom: 12px; color: #2c3e50; font-size: 1rem; }
+  h4.section-head { border-left: 4px solid #b89752; padding-left: 8px; color: #2c3e50; margin: 20px 0 10px; font-size: 0.92rem; }
+  h4.section-head:first-child { margin-top: 0; }
+  .note { font-size: 0.8rem; color: #888; margin: -6px 0 14px; line-height: 1.5; }
+
+  .fg { margin-bottom: 12px; }
+  label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 0.86rem; color: #444; }
+  input, select {
+    width: 100%; padding: 10px; border: 1px solid #ddd8cc;
+    border-radius: 6px; font-size: 1rem; background: #fff;
+  }
+  .btn {
+    width: 100%; padding: 12px; background: #2c3e50; color: #fff;
+    border: none; border-radius: 6px; font-size: 0.95rem;
+    font-weight: bold; cursor: pointer; letter-spacing: 1px; margin-top: 4px;
+  }
+  .btn:active { opacity: 0.85; }
+
+  #seed-list { margin-bottom: 4px; }
+  .seed-item {
+    display: flex; align-items: center; gap: 6px;
+    background: #fff; border: 1px solid #ddd8cc; border-radius: 8px;
+    padding: 8px; margin-bottom: 6px; touch-action: none;
+  }
+  .seed-item.dragging { background: #fdf8ee; border-color: #b89752; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+  .seed-num { width: 18px; text-align: center; color: #999; font-weight: bold; font-size: 0.8rem; flex-shrink: 0; }
+  .seed-item select.seed-player { flex: 1; min-width: 0; padding: 8px; }
+  .seed-handle {
+    width: 32px; height: 32px; flex-shrink: 0; display: flex;
+    align-items: center; justify-content: center;
+    color: #bbb; font-size: 1.2rem; cursor: grab; touch-action: none;
+  }
+  .seed-handle:active { color: #555; cursor: grabbing; }
+
+  #roster-list { margin-bottom: 4px; }
+  .roster-item {
+    display: flex; align-items: center; gap: 6px;
+    background: #fff; border: 1px solid #ddd8cc; border-radius: 8px;
+    padding: 6px 8px; margin-bottom: 6px;
+  }
+  .roster-name-wrap { flex: 1; min-width: 0; }
+  .roster-item input.roster-name { width: 100%; padding: 8px; box-sizing: border-box; }
+  .roster-id { font-size: 0.66rem; color: #bbb; font-family: monospace; margin: 3px 0 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .roster-item select.roster-rank { width: 70px; flex-shrink: 0; padding: 0 2px; font-size: 0.76rem; box-sizing: border-box; }
+  .roster-del-btn {
+    width: 30px; height: 30px; flex-shrink: 0; border: none; border-radius: 6px;
+    background: #f0ede4; color: #999; font-size: 0.9rem; cursor: pointer;
+  }
+  .roster-del-btn:active { background: #e74c3c; color: #fff; }
+
+  #legacy-rows { margin-bottom: 4px; }
+  .legacy-row {
+    display: flex; flex-direction: column; gap: 6px;
+    background: #fff; border: 1px solid #ddd8cc; border-radius: 8px;
+    padding: 8px; margin-bottom: 6px;
+  }
+  .legacy-row-top { display: flex; align-items: center; gap: 6px; }
+  .legacy-row select.legacy-player { flex: 1; min-width: 0; padding: 8px; }
+  .legacy-fields { display: flex; gap: 6px; }
+  .legacy-field { flex: 1; min-width: 0; }
+  .legacy-field label { display: block; font-size: 0.68rem; font-weight: normal; color: #999; margin-bottom: 2px; }
+  .legacy-field input { width: 100%; padding: 6px 4px; text-align: center; box-sizing: border-box; }
+  .legacy-row-del {
+    width: 30px; height: 30px; flex-shrink: 0; border: none; border-radius: 6px;
+    background: #f0ede4; color: #999; font-size: 0.9rem; cursor: pointer;
+  }
+  .legacy-row-del:active { background: #e74c3c; color: #fff; }
+
+  #setup-banner {
+    background: #fff3cd; border: 1px solid #ffc107; color: #856404;
+    padding: 14px 16px; border-radius: 8px; margin-bottom: 16px;
+    font-size: 0.85rem; line-height: 1.7; display: none;
+  }
+
+  .standings-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid #e8e4da;
+  }
+  .standings-num { width: 34px; font-size: 1.05rem; text-align: center; flex-shrink: 0; }
+  .standings-name { font-weight: bold; font-size: 0.92rem; }
+
+  /* トーナメント図（罫線でつないだブラケット表示） */
+  .bracket-block { margin-bottom: 22px; }
+  .bracket-block-title { font-size: 0.8rem; font-weight: bold; color: #b89752; margin-bottom: 8px; }
+  .bd-scroll { overflow-x: auto; padding-bottom: 4px; }
+  .bd-wrap { position: relative; }
+  .bd-box {
+    position: absolute; box-sizing: border-box;
+    background: #fff; border: 1px solid #ddd8cc; border-radius: 5px;
+    font-size: 0.86rem; font-weight: bold; color: #444; padding: 0 6px;
+    text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .bd-out { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.25; border-color: #b89752; background: #fdf8ee; }
+  .bd-out-label { font-size: 0.62rem; color: #b89752; font-weight: bold; letter-spacing: 0.05em; }
+  .bd-pick { cursor: pointer; }
+  .bd-pick:active { background: #f5f0e0; }
+  .bd-slot-winner { border-color: #b03a2e; color: #b03a2e; background: #fdf1ef; }
+  .bd-decided { background: #2c3e50; border-color: #2c3e50; color: #fff; }
+  .bd-decided .bd-out-label { color: #f0c987; }
+  .bracket-divider { border-top: 1px dashed #ccc; margin: 22px 0; }
+
+  .archive-card {
+    background: #f1f0ea; border: 1px solid #e0dbcd; border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 8px; font-size: 0.85rem;
+  }
+
+  #admin-toggle {
+    cursor: pointer; padding: 12px 0; display: flex; align-items: center; gap: 8px;
+    color: #2c3e50; font-weight: bold; font-size: 1rem; border-bottom: 1px solid #e0dbcd;
+  }
+
+  /* スイス式 */
+  .matrix-wrap { overflow-x: auto; margin: 8px 0 4px; }
+  .matrix-wrap table { width: 100%; border-collapse: collapse; background: #faf9f5; font-size: 0.78rem; }
+  .matrix-wrap th, .matrix-wrap td { border: 1px solid #ddd8cc; padding: 6px 5px; text-align: center; white-space: nowrap; }
+  .matrix-wrap th { background: #f1f0ea; color: #2c3e50; font-size: 0.72rem; }
+  .sw-cell-win { color: #2e7d5e; font-weight: bold; }
+  .sw-cell-loss { color: #222; font-weight: bold; }
+  .sw-cell-pending { color: #999; font-size: 0.76rem; }
+  .sw-cell-empty { color: #ccc; }
+  .sw-round-tabs { display: flex; gap: 6px; overflow-x: auto; margin: 10px 0 14px; padding-bottom: 2px; }
+  .sw-round-tab { flex-shrink: 0; padding: 7px 14px; border: 1px solid #ddd8cc; border-radius: 16px; background: #fff; font-size: 0.8rem; font-weight: bold; color: #777; cursor: pointer; }
+  .sw-round-tab.active { background: #2c3e50; color: #fff; border-color: #2c3e50; }
+  .sw-round-tab.done { border-color: #b89752; }
+  .sw-match { display: flex; align-items: center; background: #fff; border: 1px solid #ddd8cc; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+  .sw-side { flex: 1; padding: 12px 10px; text-align: center; font-size: 0.88rem; font-weight: bold; color: #555; cursor: pointer; background: #fff; }
+  .sw-side.winner { background: #fdf1ef; color: #b03a2e; }
+  .sw-vs { padding: 0 6px; color: #bbb; font-size: 0.76rem; flex-shrink: 0; }
+  .sw-bye { padding: 12px; text-align: center; color: #888; font-size: 0.86rem; width: 100%; }
+  .sw-add-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sw-add-btn { background: #f0ede4; border: 1px solid #ddd; border-radius: 20px; padding: 6px 14px; font-size: 0.84rem; cursor: pointer; font-family: inherit; color: #555; }
+  .sw-add-btn:active { background: #e0dbcd; }
+  .sw-item { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #ddd8cc; border-radius: 8px; padding: 8px; margin-bottom: 6px; touch-action: none; }
+  .sw-item.dragging { background: #fdf8ee; border-color: #b89752; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+  .sw-num { width: 18px; text-align: center; color: #999; font-weight: bold; font-size: 0.78rem; flex-shrink: 0; }
+  .sw-name { flex: 1; min-width: 0; font-size: 0.88rem; font-weight: bold; color: #2c3e50; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sw-remove { width: 28px; height: 28px; flex-shrink: 0; border: none; border-radius: 6px; background: #f0ede4; color: #999; font-size: 0.85rem; cursor: pointer; }
+  .sw-remove:active { background: #e74c3c; color: #fff; }
+  .sw-handle { width: 28px; height: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 1.1rem; cursor: grab; touch-action: none; }
+  .sw-handle:active { color: #555; cursor: grabbing; }
+
+  #toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    background: #2c3e50; color: #fff; padding: 10px 18px;
+    border-radius: 20px; font-size: 0.88rem; z-index: 999;
+    display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+</style>
+</head>
+<body>
+<script>
+(function(){
+  var KEY = 'gosenrigue_auth';
+  var PASS = 'ごせんりーぐ';
+  if(localStorage.getItem(KEY) !== 'ok'){
+    var input = prompt('合言葉を入力してください');
+    if(input === PASS){
+      localStorage.setItem(KEY, 'ok');
+    } else {
+      document.documentElement.innerHTML = '<body style="font-family:sans-serif;text-align:center;padding:60px"><h2>アクセスできません</h2></body>';
+      throw new Error('access denied');
+    }
+  }
+})();
+</script>
+<div id="app">
+
+  <div id="header">
+    <h1>🏆 大会トーナメント表</h1>
+    <div id="sync-row"><span id="sync-dot"></span><span id="sync-label">接続中...</span></div>
+  </div>
+
+  <div id="nav">
+    <button class="tab-btn active" data-tab="bracket">🏆トーナメント</button>
+    <button class="tab-btn" data-tab="archive">📚過去の大会</button>
+    <button class="tab-btn" data-tab="setup">⚙️設定</button>
+  </div>
+
+  <div id="content">
+
+    <div class="panel active" id="panel-bracket"></div>
+
+    <div class="panel" id="panel-archive">
+      <h3>過去の大会</h3>
+      <p class="note">これまでの大会結果を、今の画面と同じ形式で見られます（読み取り専用）。</p>
+
+      <h4 class="section-head" style="margin-top:0">🏅 全期間の通算成績</h4>
+      <p class="note" style="margin-top:-2px">進行中の大会も含めた、これまでの全対局の通算勝敗です（対局者名簿のIDをもとに集計するため、名前を打ち直しても同一人物としてまとまります。この機能導入前の古いアーカイブのみ、名前の完全一致で集計しています）。</p>
+      <details style="margin:-4px 0 12px">
+        <summary style="font-size:0.8rem;color:#b89752;cursor:pointer">数え方について</summary>
+        <div class="note" style="margin:8px 0 0;line-height:1.7">
+          <div>・8人勝ち抜き、スイス式、簡易記録の、実際に行った対局の勝敗を合算しています。</div>
+          <div>・スイス式の不戦勝（お休み）は、実際に対局していないため、ここには数えません。その大会の順位や成績表では、勝ちとして数えています。</div>
+        </div>
+      </details>
+      <div id="alltime-record"></div>
+
+      <h4 class="section-head">📜 大会ごとの結果</h4>
+      <div id="archive-list"></div>
+    </div>
+
+    <div class="panel" id="panel-setup">
+      <div id="setup-banner">
+        ⚙️ <strong>Firebase未設定 — ローカル動作中</strong><br>
+        全員でリアルタイム共有するには <code>firebaseConfig</code> を設定してください。
+      </div>
+
+      <h3>大会設定</h3>
+      <p class="note">大会名は「大石道場杯」固定です。開催回と開催日を入力してください。対局者を名簿から選ぶと、シード順（1〜8）で1回戦の組み合わせが決まります。右端の☰を長押ししてドラッグすると並び順（シード順）を入れ替えられます。大石道場杯段位（名簿側の値）は順位表に表示されます。対局者名簿の登録・編集は下の「管理者の仕事」内で行います。</p>
+      <div class="fg"><label>形式</label>
+        <select id="t-format">
+          <option value="bracket">8人勝ち抜き（トーナメント表）</option>
+          <option value="swiss">スイス式（人数自由・7〜10人など）</option>
+        </select>
+      </div>
+      <div class="fg"><label>開催回</label><input id="t-edition" type="number" min="1" inputmode="numeric" placeholder="例：5"></div>
+      <div class="fg"><label>開催日</label><input id="t-event-date" type="date"></div>
+      <div id="setup-bracket-fields">
+      <div class="fg">
+        <label>対局者（順に1〜8）</label>
+        <div id="seed-list"></div>
+      </div>
+      </div>
+      <div id="setup-swiss-fields" style="display:none">
+        <div class="fg"><label>参加者を名簿から追加</label><div class="sw-add-list" id="sw-add-list"></div></div>
+        <div class="fg">
+          <label>参加者（☰で並び替え・✕で取り消し。並び順が組み合わせの基準になります）</label>
+          <div id="sw-selected"></div>
+          <div id="sw-count" style="font-size:0.82rem;color:#888;margin:8px 0 0"></div>
+        </div>
+        <div class="fg">
+          <label>回戦数</label>
+          <input id="sw-rounds" type="number" min="1" max="10" inputmode="numeric" placeholder="通常は3">
+          <p class="note" style="margin:6px 0 0">通常は3回戦です（例外的に4回戦もあります）。未設定のときは3が入ります。</p>
+        </div>
+      </div>
+      <button class="btn" id="save-setup">保存して全員に同期</button>
+
+      <div id="admin-toggle" style="margin-top:24px">
+        <span id="admin-arrow">▶</span>
+        <span>管理者の仕事</span>
+      </div>
+      <div id="admin-body" style="display:none;margin-top:16px">
+        <h3>対局者名簿</h3>
+        <p class="note">大会に参加しうる人をあらかじめ登録しておきます。名前と大石道場杯段位はここで一括管理し、上の「対局者（順に1〜8）」ではこの名簿から選びます（名前を打ち直しても同一人物として通算成績が引き継がれます）。各行のIDは、対局者を名前ではなく識別するための管理用の番号です（先頭8文字を表示）。</p>
+        <div id="roster-list"></div>
+        <div class="fg" style="display:flex;gap:8px;align-items:flex-end;margin-top:10px">
+          <div style="flex:1"><label>名前</label><input id="roster-new-name" type="text" placeholder="名前"></div>
+          <div style="width:78px"><label>段位</label><select id="roster-new-rank"><option value="">－</option><option value="初段">初段</option><option value="二段">二段</option><option value="三段">三段</option><option value="四段">四段</option><option value="五段">五段</option><option value="六段">六段</option><option value="七段">七段</option><option value="八段">八段</option><option value="九段">九段</option></select></div>
+          <button class="btn" id="roster-add-btn" style="width:auto;padding:10px 16px;margin:0;flex-shrink:0">追加</button>
+        </div>
+        <button class="btn" id="roster-save-btn" style="background:#b89752;margin-top:12px">名簿の変更を保存して同期</button>
+
+        <h3 style="margin-top:24px">結果のリセット</h3>
+        <p class="note">対局者名はそのまま残し、勝敗記録だけ消去します。入力ミスの修正にお使いください。</p>
+        <button class="btn" id="reset-results" style="background:#e67e22">結果だけリセット</button>
+
+        <h3 style="margin-top:24px">新しい大会にする</h3>
+        <p class="note">現在の大会をアーカイブに保存してから、開催回・開催日・結果を白紙に戻します（対局者と、今回の昇段・降段結果を反映した名簿の段位は引き継がれます）。</p>
+        <button class="btn" id="new-tournament" style="background:#e74c3c">現在の大会をアーカイブして新しく始める</button>
+
+        <h3 style="margin-top:24px">完全リセット</h3>
+        <p class="note">テスト中など、すべてをやり直したいときに使います。現在の大会と、過去のアーカイブをすべて消去して真っさらに戻します（対局者名簿は保持されます）。</p>
+        <button class="btn" id="full-reset" style="background:#888">アーカイブごと完全リセット</button>
+
+        <h3 style="margin-top:24px">8人以外の大会記録を追加（簡易記録）</h3>
+        <p class="note">8人固定のブラケット形式に当てはまらない大会（今の形式になる前の過去大会だけでなく、参加人数が8人と異なる今後の大会も含みます）の記録を追加できます。大会名は「大石道場杯」固定です。トーナメント図は作れませんが、対局者ごとの勝敗数（任意で順位も）を入力しておけば「📚過去の大会」タブの全期間の通算成績に反映されます。参加者は対局者名簿から選びます（名簿にいない人は先に名簿へ追加してください）。</p>
+        <div class="fg"><label>開催回（任意・分かれば入力。通常の大会と同じ「大石道場杯 第◯回」表示になります）</label><input id="legacy-edition" type="number" min="1" inputmode="numeric" placeholder="例：1"></div>
+        <div class="fg"><label>開催日（任意）</label><input id="legacy-date" type="date"></div>
+        <div id="legacy-rows"></div>
+        <button type="button" class="btn" id="legacy-add-row" style="background:#f1f0ea;color:#2c3e50">＋ 参加者を追加</button>
+        <div id="legacy-editing-note" style="display:none;font-size:0.82rem;color:#b03a2e;font-weight:bold;margin-top:10px">✎ 既存の記録を編集中です</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn" id="legacy-save" style="background:#b89752;margin:0">この記録を保存</button>
+          <button type="button" class="btn" id="legacy-cancel-edit" style="display:none;background:#f1f0ea;color:#2c3e50;margin:0;width:auto;flex-shrink:0;padding:12px 16px">編集をやめる</button>
+        </div>
+
+        <h3 style="margin-top:24px">登録済みの簡易記録の修正・削除</h3>
+        <p class="note">入力ミスがあった簡易記録を、あとから編集・削除できます。「編集」を押すと上のフォームに内容が読み込まれるので、直してから「この記録を保存」を押してください。</p>
+        <div id="legacy-manage-list"></div>
+
+        <h3 style="margin-top:24px">データエクスポート</h3>
+        <p class="note">Firebaseのデータをファイルとして保存します。万が一のバックアップに使ってください。</p>
+        <button class="btn" id="export-btn" style="background:#2c3e50">JSONでダウンロード</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey:            "AIzaSyBSrQkPMPc-icuph244VBorNqRf2yP-U7Y",
+  authDomain:        "hiking-558a9.firebaseapp.com",
+  databaseURL:       "https://hiking-558a9-default-rtdb.firebaseio.com",
+  projectId:         "hiking-558a9",
+  storageBucket:     "hiking-558a9.firebasestorage.app",
+  messagingSenderId: "1066293850319",
+  appId:             "1:1066293850319:web:94409f01b194d5afe7c7ba"
+};
+
+function emptyResults() {
+  return { qf:[null,null,null,null], sf:[null,null], final:null, third:null, cLower:[null,null], fifth:null, seventh:null };
+}
+
+// Firebase Realtime Databaseは配列中のnullを保存時に取り除くため、
+// [0,null,null,null]のような配列が {0:0} のようなオブジェクトとして
+// 返ってくることがある。そのままだと未決定マス（qf[1]など）が
+// null ではなく undefined になり、「すでに決まっている」との
+// 誤判定（意図しない確認メッセージ）を招くため、読み込み時に
+// 必ず正しい長さ・null埋めの配列／値へ正規化する。
+function normResultVal(v) { return (v === 0 || v === 1) ? v : null; }
+function normResultArr(v, len) {
+  const arr = new Array(len).fill(null);
+  if (Array.isArray(v)) {
+    v.forEach((x, i) => { if (i < len) arr[i] = normResultVal(x); });
+  } else if (v && typeof v === "object") {
+    Object.keys(v).forEach(k => {
+      const i = Number(k);
+      if (Number.isInteger(i) && i >= 0 && i < len) arr[i] = normResultVal(v[k]);
+    });
+  }
+  return arr;
+}
+function normalizeResults(data) {
+  if (!data) return emptyResults();
+  return {
+    qf:      normResultArr(data.qf, 4),
+    sf:      normResultArr(data.sf, 2),
+    final:   normResultVal(data.final),
+    third:   normResultVal(data.third),
+    cLower:  normResultArr(data.cLower, 2),
+    fifth:   normResultVal(data.fifth),
+    seventh: normResultVal(data.seventh),
+  };
+}
+
+let state = { edition:"", eventDate:"", playerIds:["","","","","","","",""], players:["","","","","","","",""], ranks:["","","","","","","",""], results: emptyResults(), format:"bracket", swissIds:[], swiss:{ rounds:null, results:[] } };
+// スイス式の設定入力中の下書き（保存ボタンを押すまでFirebaseには書き込まない）
+let swDraft = [], swDirty = false, swActiveRound = 0;
+let roster = {}; // { id: { name, rank } } 対局者名簿
+let stateRef = null, archiveRef = null, rosterRef = null;
+const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
+let editingSetup = false;
+let editingRoster = false;
+let stateLoaded = false, rosterLoaded = false;
+
+if (isConfigured) {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    stateRef   = firebase.database().ref("tournament/state");
+    archiveRef = firebase.database().ref("tournament/archive");
+    rosterRef  = firebase.database().ref("tournament/roster");
+    stateRef.on("value", snap => {
+      const data = snap.val();
+      if (data) {
+        state = {
+          edition:   typeof data.edition === "string" ? data.edition : "",
+          eventDate: typeof data.eventDate === "string" ? data.eventDate : "",
+          playerIds: Array.isArray(data.playerIds) && data.playerIds.length === 8 ? data.playerIds : null,
+          players: Array.isArray(data.players) && data.players.length === 8 ? data.players : state.players,
+          ranks:   Array.isArray(data.ranks) && data.ranks.length === 8 ? data.ranks : state.ranks,
+          results: normalizeResults(data.results),
+          format:  data.format === "swiss" ? "swiss" : "bracket",
+          swissIds: swToArr(data.swissIds),
+          swiss: {
+            rounds:  (data.swiss && typeof data.swiss.rounds === "number") ? data.swiss.rounds : null,
+            results: swNormRounds(data.swiss && data.swiss.results)
+          }
+        };
+      }
+      stateLoaded = true;
+      onStateOrRosterReady();
+    }, () => setSyncStatus(false));
+    rosterRef.on("value", snap => {
+      roster = snap.val() || {};
+      rosterLoaded = true;
+      onStateOrRosterReady();
+    }, () => setSyncStatus(false));
+    renderArchive();
+  } catch(e) {
+    console.error("Firebase init failed:", e);
+    setSyncStatus(false);
+  }
+} else {
+  document.getElementById("setup-banner").style.display = "block";
+  setSyncStatus(false);
+  state.playerIds = ["","","","","","","",""];
+  fillSettingsInputs();
+  renderAll();
+}
+
+// state・rosterの両方が揃うたびに呼ばれる。旧形式（playerIds未保存）からの移行、
+// state.players/ranksの再計算、画面の再描画をまとめて行う。
+function onStateOrRosterReady() {
+  if (!stateLoaded || !rosterLoaded) return; // 両方揃うまで待つ
+  migrateStateToPlayerIds();
+  syncDerivedFromRoster();
+  if (!editingSetup) fillSettingsInputs();
+  if (!editingRoster) renderRosterList();
+  refreshLegacyRowOptions();
+  renderAll();
+  setSyncStatus(true);
+}
+
+// 旧形式（対局者名を直接テキストで保存していた形式）のデータに対して、
+// 名簿（roster）へ自動登録した上でplayerIdsを補完する（打ち直し不要にするための後方互換処理）。
+let migratedOnce = false;
+function migrateStateToPlayerIds() {
+  if (Array.isArray(state.playerIds)) return; // すでに新形式
+  if (migratedOnce) return;
+  migratedOnce = true;
+  const ids = state.players.map((name, i) => {
+    if (!name) return "";
+    let foundId = Object.keys(roster).find(id => (roster[id].name || "") === name);
+    if (!foundId) {
+      foundId = crypto.randomUUID();
+      roster[foundId] = { name, rank: state.ranks[i] || "" };
+    }
+    return foundId;
+  });
+  state.playerIds = ids;
+  if (rosterRef) rosterRef.set(roster);
+  if (stateRef)  stateRef.set(state);
+}
+
+// playerIds（名簿ID）から、表示・既存ロジック用のstate.players/ranksを再計算する。
+// 大会中の判定（勝敗の集計など）は従来通りstate.players（名前文字列）ベースのまま動くため、
+// 名簿の名前・段位が変わったら常にここで再同期する。
+function syncDerivedFromRoster() {
+  if (!Array.isArray(state.playerIds)) return;
+  state.players = state.playerIds.map(id => (id && roster[id] && roster[id].name) || "");
+  state.ranks   = state.playerIds.map(id => (id && roster[id] && roster[id].rank) || "");
+}
+
+function pushState() { if (stateRef) stateRef.set(state); renderAll(); }
+
+function setSyncStatus(online) {
+  const dot = document.getElementById("sync-dot");
+  const lbl = document.getElementById("sync-label");
+  if (!isConfigured) { dot.style.background = "#e67e22"; lbl.textContent = "ローカルモード（Firebase未設定）"; return; }
+  if (online) {
+    dot.style.background = "#2ecc71";
+    const now = new Date();
+    lbl.textContent = `リアルタイム同期中 · ${now.getHours()}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  } else { dot.style.background = "#e74c3c"; lbl.textContent = "オフライン"; }
+}
+function pad(n) { return String(n).padStart(2, "0"); }
+
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+    if (btn.dataset.tab === "archive") { archiveShowAll = false; renderArchive(); }
+  });
+});
+
+function escapeHtml(s) {
+  return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// 大会名は「大石道場杯」固定。開催回が入っていれば「大石道場杯 第◯回」と表示する
+function tournamentTitle(edition) {
+  return "大石道場杯" + (edition ? ` 第${edition}回` : "");
+}
+// <input type="date">のISO形式（YYYY-MM-DD）を、他画面と揃えた表示形式（YYYY/M/D）に変換
+function formatDateDisplay(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${y}/${parseInt(m)}/${parseInt(d)}`;
+}
+
+// 対局者名から大石道場杯段位を引く（同姓同名がいる場合は最初に一致した枠を使う）
+function getPlayerRank(name, players = state.players, ranks = state.ranks) {
+  if (!name) return "";
+  const idx = players.indexOf(name);
+  return idx >= 0 ? (ranks[idx] || "") : "";
+}
+
+// 昇段・降段の計算（1・2位は昇段、7・8位は降段というルール専用）
+const RANK_LEVELS = ["初段","二段","三段","四段","五段","六段","七段","八段","九段"];
+function promoteRank(rank) {
+  const i = RANK_LEVELS.indexOf(rank);
+  if (i === -1) return rank || ""; // 大石道場杯段位未設定・未知の表記はそのまま
+  return RANK_LEVELS[Math.min(i + 1, RANK_LEVELS.length - 1)];
+}
+function demoteRank(rank) {
+  const i = RANK_LEVELS.indexOf(rank);
+  if (i === -1) return rank || "";
+  return RANK_LEVELS[Math.max(i - 1, 0)];
+}
+// 1・2位は昇段、7・8位は降段のバッジHTML（該当順位以外は空文字）
+function rankChangeBadgeHTML(rank) {
+  if (rank === 1 || rank === 2) return `<span style="display:inline-block;background:#c0392b;color:#fff;font-size:0.66rem;font-weight:bold;padding:1px 7px;border-radius:10px;margin-left:6px;vertical-align:middle;white-space:nowrap">⬆ 昇段</span>`;
+  if (rank === 7 || rank === 8) return `<span style="display:inline-block;background:#2980b9;color:#fff;font-size:0.66rem;font-weight:bold;padding:1px 7px;border-radius:10px;margin-left:6px;vertical-align:middle;white-space:nowrap">⬇ 降段</span>`;
+  return "";
+}
+
+// ---------- 組み合わせロジック ----------
+function pairResult(players, resultVal) {
+  const [a, b] = players;
+  if (resultVal === null || resultVal === undefined || !a || !b) return { winner:null, loser:null };
+  return resultVal === 0 ? { winner:a, loser:b } : { winner:b, loser:a };
+}
+function getQFPlayers(i, players = state.players) { return [players[2*i] || null, players[2*i+1] || null]; }
+function getQFResult(i, players = state.players, results = state.results)  { return pairResult(getQFPlayers(i, players), results.qf[i]); }
+
+function getSFPlayers(i, players = state.players, results = state.results) { return [getQFResult(2*i, players, results).winner, getQFResult(2*i+1, players, results).winner]; }
+function getSFResult(i, players = state.players, results = state.results)  { return pairResult(getSFPlayers(i, players, results), results.sf[i]); }
+
+function getFinalPlayers(players = state.players, results = state.results) { return [getSFResult(0, players, results).winner, getSFResult(1, players, results).winner]; }
+function getFinalResult(players = state.players, results = state.results)  { return pairResult(getFinalPlayers(players, results), results.final); }
+
+function getThirdPlayers(players = state.players, results = state.results) { return [getSFResult(0, players, results).loser, getSFResult(1, players, results).loser]; }
+function getThirdResult(players = state.players, results = state.results)  { return pairResult(getThirdPlayers(players, results), results.third); }
+
+function getCLowerPlayers(i, players = state.players, results = state.results) { return [getQFResult(2*i, players, results).loser, getQFResult(2*i+1, players, results).loser]; }
+function getCLowerResult(i, players = state.players, results = state.results)  { return pairResult(getCLowerPlayers(i, players, results), results.cLower[i]); }
+
+function getFifthPlayers(players = state.players, results = state.results) { return [getCLowerResult(0, players, results).winner, getCLowerResult(1, players, results).winner]; }
+function getFifthResult(players = state.players, results = state.results)  { return pairResult(getFifthPlayers(players, results), results.fifth); }
+
+function getSeventhPlayers(players = state.players, results = state.results) { return [getCLowerResult(0, players, results).loser, getCLowerResult(1, players, results).loser]; }
+function getSeventhResult(players = state.players, results = state.results)  { return pairResult(getSeventhPlayers(players, results), results.seventh); }
+
+// 8人分の最終順位（1〜8位）を計算する。renderBracket（進行中の大会）と
+// renderArchivedTournament（過去の大会）の両方から使う共通ロジック。
+function computePlacements(players = state.players, results = state.results) {
+  const finalR   = getFinalResult(players, results);
+  const thirdR   = getThirdResult(players, results);
+  const fifthR   = getFifthResult(players, results);
+  const seventhR = getSeventhResult(players, results);
+  return [
+    { rank: 1, medal: "🥇", name: finalR.winner },
+    { rank: 2, medal: "🥈", name: finalR.loser },
+    { rank: 3, medal: "🥉", name: thirdR.winner },
+    { rank: 4, medal: "4",  name: thirdR.loser },
+    { rank: 5, medal: "5",  name: fifthR.winner },
+    { rank: 6, medal: "6",  name: fifthR.loser },
+    { rank: 7, medal: "7",  name: seventhR.winner },
+    { rank: 8, medal: "8",  name: seventhR.loser },
+  ];
+}
+
+// 1つの大会分の、対局者ごとの勝敗数を集計する。
+// 本戦（1回戦・準決勝・決勝）・3位決定戦・下位準決勝・5位決定戦・7位決定戦の
+// 全12対局のうち、決着済みの対局だけを対象にする。
+function tallyTournamentRecord(players = state.players, results = state.results) {
+  const tally = {};
+  const add = (r) => {
+    if (!r || !r.winner || !r.loser) return;
+    if (!tally[r.winner]) tally[r.winner] = { wins: 0, losses: 0 };
+    if (!tally[r.loser])  tally[r.loser]  = { wins: 0, losses: 0 };
+    tally[r.winner].wins++;
+    tally[r.loser].losses++;
+  };
+  for (let i = 0; i < 4; i++) add(getQFResult(i, players, results));
+  for (let i = 0; i < 2; i++) add(getSFResult(i, players, results));
+  add(getFinalResult(players, results));
+  add(getThirdResult(players, results));
+  for (let i = 0; i < 2; i++) add(getCLowerResult(i, players, results));
+  add(getFifthResult(players, results));
+  add(getSeventhResult(players, results));
+  return tally;
+}
+
+function winRateStr(w, l) {
+  const total = w + l;
+  if (total === 0) return "";
+  return `（${(w / total).toFixed(2)}）`;
+}
+
+// 8人以外の大会記録（簡易記録）で入力された順位の表示ラベル。
+// 1〜3位はメダル絵文字、それ以外は数字＋「位」、未入力ならなし。
+function legacyRankLabel(rank) {
+  if (!rank) return "";
+  const medals = { 1: "🥇", 2: "🥈", 3: "🥉" };
+  return medals[rank] || `${rank}位`;
+}
+
+// 指定した対局者名の順位（1〜8）を返す。順位未定ならnull
+function placementRankOf(placements, name) {
+  const found = placements.find(p => p.name === name);
+  return found ? found.rank : null;
+}
+// 1人分の次回大石道場杯段位を計算（1・2位＝昇段／7・8位＝降段／3〜6位・順位未定＝変更なし）
+function computeNextRank(curRank, placementRank) {
+  if (placementRank === null) return curRank; // 順位未定なら変更なし
+  if (placementRank <= 2) return promoteRank(curRank);
+  if (placementRank >= 7) return demoteRank(curRank);
+  return curRank;
+}
+// 全対局者分の次回大石道場杯段位をまとめて計算（「新しい大会にする」で大石道場杯段位を引き継ぐ際に使用）
+function computeNextRanks(players, ranks, results) {
+  const placements = computePlacements(players, results);
+  return players.map((name, i) => {
+    if (!name) return ranks[i] || "";
+    return computeNextRank(ranks[i] || "", placementRankOf(placements, name));
+  });
+}
+
+// 指定した対局(cat, idx)の現在の選択値（0/1/null）を返す
+function getCurrentResultValue(cat, idx) {
+  if (cat === "qf")     return state.results.qf[idx];
+  if (cat === "sf")     return state.results.sf[idx];
+  if (cat === "cLower") return state.results.cLower[idx];
+  if (cat === "final")  return state.results.final;
+  if (cat === "third")  return state.results.third;
+  if (cat === "fifth")  return state.results.fifth;
+  if (cat === "seventh") return state.results.seventh;
+  return null;
+}
+
+// その対局を変更した場合に、自動でクリアされる下流の結果が
+// 実際に存在するかどうかを判定する（qf・sf・cLowerのみ下流あり）
+function hasDownstreamResults(cat, idx) {
+  if (cat === "qf") {
+    const sfIdx = Math.floor(idx / 2);
+    return state.results.sf[sfIdx] !== null || state.results.final !== null ||
+           state.results.third !== null || state.results.cLower[sfIdx] !== null ||
+           state.results.fifth !== null || state.results.seventh !== null;
+  }
+  if (cat === "sf")     return state.results.final !== null || state.results.third !== null;
+  if (cat === "cLower") return state.results.fifth !== null || state.results.seventh !== null;
+  return false;
+}
+
+function setWinner(cat, idx, side) {
+  const current = getCurrentResultValue(cat, idx);
+  if (current === side) return; // 変更なし
+
+  // すでに勝者が決まっている対局を変更しようとした場合は、誤タップ対策として確認する
+  if (current !== null) {
+    const msg = hasDownstreamResults(cat, idx)
+      ? "すでに決まっている結果を変更します。この対局に続く下位ラウンド・順位決定戦の結果は自動的にクリアされます。よろしいですか？"
+      : "すでに決まっている結果を変更しますか？";
+    if (!confirm(msg)) return;
+  }
+
+  if (cat === "qf") {
+    state.results.qf[idx] = side;
+    const sfIdx = Math.floor(idx/2);
+    state.results.sf[sfIdx] = null;
+    state.results.final = null;
+    state.results.third = null;
+    state.results.cLower[sfIdx] = null;
+    state.results.fifth = null;
+    state.results.seventh = null;
+  } else if (cat === "sf") {
+    state.results.sf[idx] = side;
+    state.results.final = null;
+    state.results.third = null;
+  } else if (cat === "cLower") {
+    state.results.cLower[idx] = side;
+    state.results.fifth = null;
+    state.results.seventh = null;
+  } else if (cat === "final") {
+    state.results.final = side;
+  } else if (cat === "third") {
+    state.results.third = side;
+  } else if (cat === "fifth") {
+    state.results.fifth = side;
+  } else if (cat === "seventh") {
+    state.results.seventh = side;
+  }
+  pushState();
+}
+
+// ---------- トーナメント図（ブラケット線） ----------
+// leaves: 末端の対局者名の配列（長さは2のべき乗）
+// winnerSideLevels: ラウンドごとの勝者サイド配列（winnerSideLevels[r][i] は 0/1/null。
+//   0=そのカードの上側が勝ち、1=下側が勝ち、null=未定）
+// winnerName/loserName: 最終的な勝者・敗者名（未定ならnull）
+// outputLabels: [勝者側の見出し, 敗者側の見出し]（例：["優勝","準優勝"]）
+//
+// 罫線は常にグレーで骨組みを描き、実際に勝ち上がった経路だけ赤で上書きする。
+// 負けた側の線は最後まで（最終順位ボックスへの線も含めて）グレーのまま。
+// editable: true の場合、葉ボックス（対局者名）をタップして直接編集できる
+//   （本戦の1回戦＝対局者8名の入力に使う。3位/5位/7位決定戦の図は結果から自動計算される
+//   ため編集不可＝falseのまま呼び出す）
+function renderBracketDiagram(container, leaves, winnerSideLevels, winnerName, loserName, outputLabels, onSlotClick) {
+  const n = leaves.length;
+  const rounds = Math.log2(n);
+  const rowH = 46, boxH = 34, gapOut = boxH + 12;
+  const GRAY = "#d8d2c2", RED = "#b03a2e";
+
+  // 表示エリアの実際の幅に合わせて、名前ボックスの横幅と間隔を動的に決める。
+  // ラウンド数（cols=ラウンド数+最終結果列）で幅を等分し、
+  // 横スクロールしなくても収まるようにする（極端に狭い画面ではbd-scrollの
+  // overflow-xがフォールバックとして働く）。
+  const availW = Math.max(container.clientWidth || 0, 260);
+  const cols = rounds + 1; // 名前ボックスの列数（各ラウンド＋最終結果列）
+  const stepW = 12;
+  let leafW = Math.floor((availW - 4 - cols * stepW) / cols);
+  leafW = Math.max(52, Math.min(130, leafW));
+  const outBoxW = leafW;
+  const boxFont = leafW < 66 ? "0.66rem" : leafW < 82 ? "0.76rem" : "0.86rem";
+  const colStep = leafW + stepW; // 1ラウンド分の横幅（名前ボックス＋線の間隔）
+
+  // 各段の中心y座標を計算（levels[0]=葉、levels[rounds]=最終合流点）
+  const levels = [Array.from({ length:n }, (_, i) => (i + 0.5) * rowH)];
+  while (levels[levels.length - 1].length > 1) {
+    const prev = levels[levels.length - 1];
+    const next = [];
+    for (let i = 0; i < prev.length; i += 2) next.push((prev[i] + prev[i+1]) / 2);
+    levels.push(next);
+  }
+
+  // 各段（レベル）の対局者名を、勝敗結果をもとに積み上げ計算する。
+  // levelNames[0]=葉（初期対局者）。以降levelNames[L]は、その1つ前のラウンドの
+  // 勝者が並んだ配列になる（＝次ラウンドの対局候補）。
+  const levelNames = [leaves.slice()];
+  for (let r = 0; r < rounds; r++) {
+    const prev = levelNames[r];
+    const cur = [];
+    for (let i = 0; i < prev.length / 2; i++) {
+      const side = winnerSideLevels[r] ? winnerSideLevels[r][i] : null;
+      cur.push(side === 0 ? prev[2*i] : side === 1 ? prev[2*i+1] : null);
+    }
+    levelNames.push(cur);
+  }
+
+  const finalY = levels[rounds][0];
+  const outTopY = finalY - gapOut / 2, outBotY = finalY + gapOut / 2;
+  const xAfterRounds = rounds * colStep;
+  const totalW = xAfterRounds + stepW + outBoxW + 4;
+  const totalH = n * rowH;
+
+  const seg = (x1,y1,x2,y2,color,w) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${w}"/>`;
+
+  let baseLines = "", winLines = "", boxes = "";
+
+  // レベルL（0〜rounds-1）ごとに名前ボックスを描画する。
+  // 対になる2枠の名前が両方揃っていれば、タップでその対局の勝者を選べる
+  // （対局者名の入力・修正は⚙️設定タブで行う）。
+  for (let L = 0; L < rounds; L++) {
+    const names = levelNames[L];
+    const ys = levels[L];
+    const x = L * colStep;
+    names.forEach((name, j) => {
+      const y = ys[j] - boxH / 2;
+      const pairIdx = Math.floor(j / 2);
+      const side = j % 2;
+      const partner = names[side === 0 ? j + 1 : j - 1];
+      const ready = !!name && !!partner;
+      const isWinnerSide = winnerSideLevels[L] && winnerSideLevels[L][pairIdx] === side;
+      let cls = "bd-box";
+      let attrs = "";
+      const label = name ? escapeHtml(name) : "―";
+      if (ready && onSlotClick) {
+        // 両者揃ったら、タップでその対局の勝者を選べる
+        cls += " bd-pick";
+        if (isWinnerSide) cls += " bd-slot-winner";
+        attrs = ` data-level="${L}" data-pair="${pairIdx}" data-side="${side}"`;
+      }
+      boxes += `<div class="${cls}" style="left:${x}px; top:${y}px; width:${leafW}px; height:${boxH}px; line-height:${boxH}px; font-size:${boxFont}"${attrs}>${label}</div>`;
+    });
+  }
+
+  for (let r = 0; r < rounds; r++) {
+    const fromYs = levels[r], toYs = levels[r+1];
+    const xIn = r * colStep + leafW, xMid = xIn + stepW / 2, xOut = xIn + stepW;
+    for (let i = 0; i < toYs.length; i++) {
+      const yTop = fromYs[2*i], yBot = fromYs[2*i+1], yMid = toYs[i];
+      // 骨組み（常にグレー）
+      baseLines += seg(xIn,yTop,xMid,yTop,GRAY,1.5) + seg(xIn,yBot,xMid,yBot,GRAY,1.5)
+                 + seg(xMid,yTop,xMid,yBot,GRAY,1.5) + seg(xMid,yMid,xOut,yMid,GRAY,1.5);
+      // 勝者側だけ赤で上書き
+      const side = winnerSideLevels[r] ? winnerSideLevels[r][i] : null;
+      if (side === 0 || side === 1) {
+        const yWin = side === 0 ? yTop : yBot;
+        winLines += seg(xIn,yWin,xMid,yWin,RED,2.5) + seg(xMid,yWin,xMid,yMid,RED,2.5) + seg(xMid,yMid,xOut,yMid,RED,2.5);
+      }
+    }
+  }
+
+  // 最終合流点 → 勝者・敗者の出力ボックスへの分岐（敗者側の線はグレーのまま）
+  {
+    const xIn = xAfterRounds, xMid = xIn + stepW / 2, xOut = xIn + stepW;
+    baseLines += seg(xIn,finalY,xMid,finalY,GRAY,1.5)
+               + seg(xMid,outTopY,xMid,outBotY,GRAY,1.5)
+               + seg(xMid,outTopY,xOut,outTopY,GRAY,1.5)
+               + seg(xMid,outBotY,xOut,outBotY,GRAY,1.5);
+    const decided = !!(winnerSideLevels[rounds-1] && (winnerSideLevels[rounds-1][0] === 0 || winnerSideLevels[rounds-1][0] === 1));
+    if (decided) {
+      winLines += seg(xIn,finalY,xMid,finalY,RED,2.5) + seg(xMid,finalY,xMid,outTopY,RED,2.5) + seg(xMid,outTopY,xOut,outTopY,RED,2.5);
+    }
+  }
+
+  boxes += `<div class="bd-box bd-out ${winnerName ? "bd-decided" : ""}" style="left:${xAfterRounds+stepW}px; top:${outTopY-boxH/2}px; width:${outBoxW}px; height:${boxH}px; font-size:${boxFont}">
+    <span class="bd-out-label">${outputLabels[0]}</span>${winnerName ? escapeHtml(winnerName) : ""}
+  </div>`;
+  boxes += `<div class="bd-box bd-out ${loserName ? "bd-decided" : ""}" style="left:${xAfterRounds+stepW}px; top:${outBotY-boxH/2}px; width:${outBoxW}px; height:${boxH}px; font-size:${boxFont}">
+    <span class="bd-out-label">${outputLabels[1]}</span>${loserName ? escapeHtml(loserName) : ""}
+  </div>`;
+
+  container.innerHTML = `<div class="bd-scroll"><div class="bd-wrap" style="width:${totalW}px; height:${totalH}px">
+    <svg width="${totalW}" height="${totalH}" style="position:absolute;top:0;left:0">${baseLines}${winLines}</svg>
+    ${boxes}
+  </div></div>`;
+
+  if (onSlotClick) {
+    container.querySelectorAll(".bd-pick").forEach(box => {
+      box.addEventListener("click", () => onSlotClick(Number(box.dataset.level), Number(box.dataset.pair), Number(box.dataset.side)));
+    });
+  }
+}
+
+// ---------- 描画 ----------
+function renderBracket() {
+  if (state.format === "swiss") { renderSwissPanel(); return; }
+  const el = document.getElementById("panel-bracket");
+
+  let html = "";
+  html += `<h3 style="margin-bottom:4px">${escapeHtml(tournamentTitle(state.edition))}</h3>`;
+  if (state.eventDate) html += `<p class="note" style="margin-top:-2px">開催日：${escapeHtml(formatDateDisplay(state.eventDate))}</p>`;
+
+  // ===== トーナメント図 =====
+  html += `<h4 class="section-head">🖼 トーナメント表</h4>`;
+  html += `<p class="note" style="margin-top:-2px">両者の名前が揃った枠をタップすると、その対局の勝者に選べます。対局者の変更・並び順の変更は⚙️設定タブで行います。</p>`;
+  html += `<div class="bracket-block"><div class="bracket-block-title">本戦</div><div id="bd-main"></div></div>`;
+  html += `<div class="bracket-block"><div class="bracket-block-title">3位決定戦</div><div id="bd-third"></div></div>`;
+  html += `<div class="bracket-divider"></div>`;
+  html += `<div class="bracket-block"><div class="bracket-block-title">5位決定戦</div><div id="bd-fifth"></div></div>`;
+  html += `<div class="bracket-block"><div class="bracket-block-title">7位決定戦</div><div id="bd-seventh"></div></div>`;
+
+  // ===== 順位（決定した分だけ表示、未定は「未定」） =====
+  const placements = computePlacements();
+  // 段位が誰にも設定されていないときは、昇段・降段まわりの表示をすべて隠す
+  const hasAnyRank = state.players.some((name, i) => name && state.ranks[i]);
+  html += `<h4 class="section-head">🏅 順位</h4>`;
+  if (hasAnyRank) {
+    html += `<p class="note" style="margin-top:-2px">1・2位は昇段、7・8位は降段です。</p>`;
+  }
+  html += placements.map(p => {
+    const rank = getPlayerRank(p.name);
+    const badge = (p.name && hasAnyRank) ? rankChangeBadgeHTML(p.rank) : "";
+    const nameHTML = p.name
+      ? escapeHtml(p.name) + (rank ? ` <span style="font-weight:normal;color:#b89752;font-size:0.8rem">${escapeHtml(rank)}</span>` : "") + badge
+      : '<span style="color:#bbb;font-weight:normal">未定</span>';
+    return `
+    <div class="standings-row">
+      <div class="standings-num">${p.medal}</div>
+      <div class="standings-name">${nameHTML}</div>
+    </div>`;
+  }).join("");
+
+  // ===== 今回の成績（勝敗数） =====
+  const tally = tallyTournamentRecord(state.players, state.results);
+  const tallyRows = state.players.filter(p => p).map(p => {
+    const t = tally[p] || { wins: 0, losses: 0 };
+    return { name: p, wins: t.wins, losses: t.losses };
+  }).sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+  html += `<h4 class="section-head">🥊 今回の成績</h4>`;
+  if (tallyRows.every(r => r.wins === 0 && r.losses === 0)) {
+    html += `<p style="color:#999;font-size:0.88rem">まだ対局結果がありません。</p>`;
+  } else {
+    html += tallyRows.map(r => `
+    <div class="standings-row">
+      <div class="standings-name" style="flex:1">${escapeHtml(r.name)}</div>
+      <div style="font-size:0.86rem;color:#666;white-space:nowrap;flex-shrink:0">${r.wins}勝 ${r.losses}敗${winRateStr(r.wins, r.losses)}</div>
+    </div>`).join("");
+  }
+
+  // ===== 全員の次回大石道場杯段位 =====
+  // 順位が決まった対局者は1・2位＝昇段／7・8位＝降段／3〜6位＝変更なしを反映し、
+  // まだ順位が決まっていない対局者は「未定」と表示する。
+  if (hasAnyRank) {
+    html += `<h4 class="section-head">🎓 全員の次回大石道場杯段位</h4>`;
+    html += `<p class="note" style="margin-top:-2px">3〜6位は大石道場杯段位の変更なし。順位が未定の対局者は「未定」と表示されます。</p>`;
+    html += state.players.map((name, i) => {
+      if (!name) return "";
+      const curRank = state.ranks[i] || "";
+      const pr = placementRankOf(placements, name);
+      let nextHTML;
+      if (pr === null) {
+        nextHTML = '<span style="color:#bbb">未定</span>';
+      } else {
+        const nextRank = computeNextRank(curRank, pr);
+        nextHTML = (nextRank ? escapeHtml(nextRank) : '<span style="color:#bbb">－</span>') + rankChangeBadgeHTML(pr);
+      }
+      return `
+      <div class="standings-row">
+        <div class="standings-name" style="flex:1">${escapeHtml(name)}</div>
+        <div style="font-size:0.84rem;color:#666;white-space:nowrap;flex-shrink:0">${curRank ? escapeHtml(curRank) : "－"} → ${nextHTML}</div>
+      </div>`;
+    }).join("");
+  }
+
+  el.innerHTML = html;
+
+  // 図を描画
+  renderBracketDiagram(
+    document.getElementById("bd-main"),
+    state.players,
+    [ state.results.qf, state.results.sf, [state.results.final] ],
+    getFinalResult().winner, getFinalResult().loser, ["優勝", "準優勝"],
+    (L, pairIdx, side) => {
+      const cat = L === 0 ? "qf" : L === 1 ? "sf" : "final";
+      setWinner(cat, cat === "final" ? 0 : pairIdx, side);
+    }
+  );
+  renderBracketDiagram(
+    document.getElementById("bd-third"),
+    getThirdPlayers(),
+    [ [state.results.third] ],
+    getThirdResult().winner, getThirdResult().loser, ["第3位", "第4位"],
+    (L, pairIdx, side) => setWinner("third", 0, side)
+  );
+  renderBracketDiagram(
+    document.getElementById("bd-fifth"),
+    [getQFResult(0).loser, getQFResult(1).loser, getQFResult(2).loser, getQFResult(3).loser],
+    [ state.results.cLower, [state.results.fifth] ],
+    getFifthResult().winner, getFifthResult().loser, ["第5位", "第6位"],
+    (L, pairIdx, side) => L === 0 ? setWinner("cLower", pairIdx, side) : setWinner("fifth", 0, side)
+  );
+  renderBracketDiagram(
+    document.getElementById("bd-seventh"),
+    getSeventhPlayers(),
+    [ [state.results.seventh] ],
+    getSeventhResult().winner, getSeventhResult().loser, ["第7位", "第8位"],
+    (L, pairIdx, side) => setWinner("seventh", 0, side)
+  );
+}
+
+// ============================================================
+//  スイス式（7・9・10人など、人数自由の大会形式）
+//  組み合わせのロジックは gasshuku.html のスイス式と同じ考え方。
+//  対局データ：rounds = [ [ {a, b, winner}, ... ], ... ]（a/bは名簿ID）
+//  b が無い（null）ものは不戦勝（bye・お休み）で、その回戦の勝ち数に数える（通算成績には数えない）。
+//  winner は "a" | "b" | "bye" | null（未定）。
+// ============================================================
+function swToArr(v) {
+  if (Array.isArray(v)) return v.filter(x => x !== undefined && x !== null);
+  if (v && typeof v === "object") return Object.keys(v).sort((a, b) => Number(a) - Number(b)).map(k => v[k]);
+  return [];
+}
+function swNormRounds(v) { return swToArr(v).map(r => swToArr(r)); }
+function swNameOf(id, snap) { return (roster[id] && roster[id].name) || (snap && snap[id]) || "（削除済み）"; }
+function swPairKey(a, b) { return [a, b].sort().join("|"); }
+function swIsBye(m) { return !m.b; }
+
+// 不戦勝（bye）は勝ち数に数える。playedOnly が true のときは、実際に対局したものだけ数える
+// （全期間の通算成績用）
+function swScores(rounds, playedOnly) {
+  const wins = {}, losses = {};
+  rounds.forEach(round => round.forEach(m => {
+    if (swIsBye(m)) { if (!playedOnly) wins[m.a] = (wins[m.a]||0)+1; return; }
+    if (!m.winner || m.winner === "bye") return;
+    if (m.winner === "a") { wins[m.a] = (wins[m.a]||0)+1; losses[m.b] = (losses[m.b]||0)+1; }
+    else if (m.winner === "b") { wins[m.b] = (wins[m.b]||0)+1; losses[m.a] = (losses[m.a]||0)+1; }
+  }));
+  return { wins, losses };
+}
+function swPlayedSet(rounds) {
+  const set = new Set();
+  rounds.forEach(round => round.forEach(m => {
+    if (swIsBye(m) || !m.winner || m.winner === "bye") return;
+    set.add(swPairKey(m.a, m.b));
+  }));
+  return set;
+}
+function swPriorByes(rounds) {
+  const s = new Set();
+  rounds.forEach(round => round.forEach(m => { if (swIsBye(m)) s.add(m.a); }));
+  return s;
+}
+
+// 公式のスイス式（ダッチシステム準拠）：成績（勝数）でグループ分けし、各グループを
+// 参加者の並び順のまま上位半分・下位半分に分けて、上位1位×下位1位…とクロスに組む。
+// グループが奇数人なら並び順で一番後ろの1人を次のグループへ降格。対戦済みなら下位半分の
+// 中で相手をずらして再戦を避ける。全体が奇数なら最初に1人だけ不戦勝（bye）にする。
+function swGeneratePairing(ids, rounds, forcedBye) {
+  const { wins } = swScores(rounds);
+  const played = swPlayedSet(rounds);
+  const byes = swPriorByes(rounds);
+
+  let pool = [...ids];
+  let byeId = null;
+  if (pool.length % 2 === 1) {
+    if (forcedBye && pool.includes(forcedBye)) {
+      byeId = forcedBye; // 不戦勝の人を手動で指定したとき
+    } else {
+      const byOrder = [...pool].sort((a, b) => (wins[a]||0) - (wins[b]||0));
+      for (const id of byOrder) { if (!byes.has(id)) { byeId = id; break; } }
+      if (!byeId) byeId = byOrder[0];
+    }
+    pool = pool.filter(id => id !== byeId);
+  }
+
+  const groups = {};
+  pool.forEach(id => { const w = wins[id] || 0; (groups[w] = groups[w] || []).push(id); });
+  const scores = Object.keys(groups).map(Number).sort((a, b) => b - a);
+
+  let matches = [];
+  let floater = null;
+  scores.forEach(score => {
+    let group = floater ? [floater, ...groups[score]] : [...groups[score]];
+    floater = null;
+    if (group.length % 2 === 1) { floater = group[group.length - 1]; group = group.slice(0, -1); }
+    matches = matches.concat(swCrossPair(group, played));
+  });
+  if (byeId) matches.push({ a: byeId, b: null, winner: "bye" });
+  return matches;
+}
+function swCrossPair(group, played) {
+  const half = group.length / 2;
+  const upper = group.slice(0, half), lower = group.slice(half);
+  const used = new Set();
+  const matches = [];
+  for (let i = 0; i < upper.length; i++) {
+    const a = upper[i];
+    const order = [i];
+    for (let d = 1; d < lower.length; d++) {
+      if (i + d < lower.length) order.push(i + d);
+      if (i - d >= 0) order.push(i - d);
+    }
+    let opp = null;
+    for (const idx of order) {
+      const b = lower[idx];
+      if (used.has(b)) continue;
+      if (!played.has(swPairKey(a, b))) { opp = b; break; }
+    }
+    if (!opp) { for (const idx of order) { const b = lower[idx]; if (!used.has(b)) { opp = b; break; } } }
+    used.add(opp);
+    matches.push({ a, b: opp, winner: null });
+  }
+  return matches;
+}
+function swRoundComplete(round) { return round.every(m => m.winner); }
+
+// 順位：勝数 → 直接対決 → BH（対戦相手の勝数合計）→ 参加者の並び順
+function swStandings(ids, rounds, snap) {
+  const { wins, losses } = swScores(rounds);
+  const opps = {};
+  ids.forEach(id => opps[id] = []);
+  rounds.forEach(round => round.forEach(m => {
+    if (swIsBye(m) || !m.winner || m.winner === "bye") return;
+    (opps[m.a] = opps[m.a] || []).push(m.b);
+    (opps[m.b] = opps[m.b] || []).push(m.a);
+  }));
+  const bh = id => (opps[id] || []).reduce((sum, o) => sum + (wins[o] || 0), 0);
+  function direct(x, y) {
+    for (const round of rounds) for (const m of round) {
+      if (swIsBye(m) || !m.winner || m.winner === "bye") continue;
+      if (m.a === x && m.b === y) return m.winner === "a" ? -1 : 1;
+      if (m.a === y && m.b === x) return m.winner === "b" ? -1 : 1;
+    }
+    return 0;
+  }
+  const list = ids.map((id, i) => ({ id, idx: i, name: swNameOf(id, snap), w: wins[id]||0, l: losses[id]||0, bh: bh(id) }));
+  list.sort((x, y) => {
+    if (y.w !== x.w) return y.w - x.w;
+    const d = direct(x.id, y.id);
+    if (d !== 0) return d;
+    if (y.bh !== x.bh) return y.bh - x.bh;
+    return x.idx - y.idx;
+  });
+  return list;
+}
+
+// マス目表の行は参加者の並び順に固定し、順位（左端）だけを算出して差し替える
+function swMatrixList(ids, rounds, snap) {
+  const standings = swStandings(ids, rounds, snap);
+  const rankOf = {};
+  standings.forEach((p, i) => { rankOf[p.id] = i + 1; });
+  return ids.map(id => {
+    const s = standings.find(p => p.id === id);
+    return { id, name: swNameOf(id, snap), w: s ? s.w : 0, l: s ? s.l : 0, bh: s ? s.bh : 0, rank: rankOf[id] || null };
+  });
+}
+function swCellHTML(id, roundIdx, rounds, snap) {
+  const round = rounds[roundIdx];
+  if (!round) return `<td class="sw-cell-empty">－</td>`;
+  const m = round.find(mm => mm.a === id || mm.b === id);
+  if (!m) return `<td class="sw-cell-empty">－</td>`;
+  if (swIsBye(m)) return `<td><div style="font-weight:bold">不戦勝</div><div class="sw-cell-win">○</div></td>`;
+  const isA = m.a === id;
+  const opp = escapeHtml(swNameOf(isA ? m.b : m.a, snap));
+  if (m.winner === "a" || m.winner === "b") {
+    const won = (isA && m.winner === "a") || (!isA && m.winner === "b");
+    return `<td><div style="font-weight:bold">${opp}</div><div class="${won ? "sw-cell-win" : "sw-cell-loss"}">${won ? "○" : "●"}</div></td>`;
+  }
+  return `<td><div style="font-weight:bold">${opp}</div><div class="sw-cell-pending">…</div></td>`;
+}
+function swMatrixHTML(list, rounds, roundCount, snap) {
+  if (list.length === 0) return `<p style="color:#999;font-size:0.88rem">対局結果がまだありません。</p>`;
+  // 不戦勝だけでは順位をつけない（実際の対局の結果が1件でも決まってから表示する）
+  const anyDecided = rounds.some(r => r.some(m => !swIsBye(m) && (m.winner === "a" || m.winner === "b")));
+  const medals = ["🥇","🥈","🥉"];
+  let head = `<tr><th>順位</th><th>対局者</th>`;
+  for (let i = 0; i < roundCount; i++) head += `<th>第${i+1}<br>回戦</th>`;
+  head += `<th>成績</th></tr>`;
+  const rows = list.map(p => {
+    const rankCell = anyDecided ? (medals[p.rank - 1] || p.rank) : "－";
+    let row = `<tr><td>${rankCell}</td><td style="text-align:left">${escapeHtml(p.name)}</td>`;
+    for (let r = 0; r < roundCount; r++) row += swCellHTML(p.id, r, rounds, snap);
+    const bhLabel = (p.w > 0 || p.l > 0) ? `<br><span style="font-size:0.62rem;color:#999">BH${p.bh}</span>` : "";
+    row += `<td>${p.w}勝${p.l}敗${bhLabel}</td></tr>`;
+    return row;
+  }).join("");
+  const bhNote = anyDecided ? `<details style="margin-top:6px"><summary style="font-size:0.8rem;color:#b89752;cursor:pointer">BH（ブフホルツ）とは？</summary>
+    <p class="note" style="margin:8px 0 0">BHは「これまで対戦した相手の勝数を、全部足した数字」です。同じ勝数の人が並んだとき、勝ち数の多い相手と対戦していた人を上位にします。順位は「①勝数 → ②直接対決の結果 → ③BH → ④参加者の並び順」の順で決めています。</p>
+  </details>` : "";
+  return `<div class="matrix-wrap"><table>${head}${rows}</table></div>${bhNote}`;
+}
+
+// ---------- 🏆トーナメントタブ（スイス式） ----------
+function renderSwissPanel() {
+  const el = document.getElementById("panel-bracket");
+  const ids = state.swissIds;
+  const rounds = state.swiss.results;
+  const roundCount = state.swiss.rounds;
+
+  let html = `<h3 style="margin-bottom:4px">${escapeHtml(tournamentTitle(state.edition))}<span style="font-size:0.72rem;font-weight:normal;color:#b89752;margin-left:8px">スイス式</span></h3>`;
+  if (state.eventDate) html += `<p class="note" style="margin-top:-2px">開催日：${escapeHtml(formatDateDisplay(state.eventDate))}</p>`;
+
+  if (ids.length < 3) {
+    el.innerHTML = html + `<p class="note" style="margin:0">⚙️設定タブで、参加者（3人以上）を選んでください。</p>`;
+    return;
+  }
+  if (!roundCount) {
+    el.innerHTML = html + `<p class="note" style="margin:0">⚙️設定タブで、回戦数を入力して保存してください。</p>`;
+    return;
+  }
+  if (swActiveRound > rounds.length) swActiveRound = rounds.length;
+  if (swActiveRound > roundCount - 1) swActiveRound = roundCount - 1;
+
+  html += `<p class="note" style="margin-top:-2px">〇＝勝ち／●＝負け／…＝結果待ち／－＝その回戦は未生成、を表します。不戦勝はこの大会の勝ち数に数えますが、全期間の通算成績には数えません。</p>`;
+  html += swMatrixHTML(swMatrixList(ids, rounds), rounds, roundCount);
+
+  html += `<h4 class="section-head">📝 結果を入力</h4>`;
+  html += `<div class="sw-round-tabs">`;
+  for (let i = 0; i < roundCount; i++) {
+    const done = rounds[i] && swRoundComplete(rounds[i]);
+    html += `<button type="button" class="sw-round-tab ${i===swActiveRound?"active":""} ${done?"done":""}" data-round="${i}">第${i+1}回戦</button>`;
+  }
+  html += `</div>`;
+
+  const idx = swActiveRound;
+  if (idx < rounds.length) {
+    if (idx < rounds.length - 1) html += `<p class="note" style="margin-top:0">この回戦を修正すると、第${idx+2}回戦以降の組み合わせは自動的に消去されます（組み直しが必要になります）。</p>`;
+    html += `<p class="note" style="margin-top:0">勝った人の名前をタップしてください。</p>`;
+    html += rounds[idx].map((m, mi) => {
+      if (swIsBye(m)) return `<div class="sw-match"><div class="sw-bye">${escapeHtml(swNameOf(m.a))}　この回戦は不戦勝（勝ち数に数えます）</div></div>`;
+      const wa = m.winner === "a", wb = m.winner === "b";
+      const at = ` data-round="${idx}" data-match="${mi}"`;
+      return `<div class="sw-match">
+        <div class="sw-side ${wa?"winner":""}"${at} data-side="a">${wa?"👑 ":""}${escapeHtml(swNameOf(m.a))}</div>
+        <div class="sw-vs">vs</div>
+        <div class="sw-side ${wb?"winner":""}"${at} data-side="b">${wb?"👑 ":""}${escapeHtml(swNameOf(m.b))}</div>
+      </div>`;
+    }).join("");
+    // 不戦勝の人は自動で決まるが、最新の回戦で結果がまだ1件も入っていなければ変更できる
+    const cur = rounds[idx];
+    const byeM = cur.find(swIsBye);
+    if (byeM && idx === rounds.length - 1 && cur.every(m => swIsBye(m) || !m.winner)) {
+      const prior = swPriorByes(rounds.slice(0, idx));
+      html += `<div class="fg" style="margin-top:12px"><label>不戦勝の人を変更する</label>
+        <select id="sw-bye-select">${ids.map(id =>
+          `<option value="${id}"${id === byeM.a ? " selected" : ""}>${escapeHtml(swNameOf(id))}${prior.has(id) ? "（不戦勝済み）" : ""}</option>`).join("")}</select>
+        <p class="note" style="margin:6px 0 0">変えると、この回戦の組み合わせを作り直します（結果を入れたあとは変更できません）。</p></div>`;
+    }
+  } else if (idx === rounds.length) {
+    const prevOk = idx === 0 || swRoundComplete(rounds[idx - 1]);
+    if (prevOk) html += `<button class="btn" id="sw-gen-round">第${idx+1}回戦の組み合わせを作る</button>`;
+    else html += `<p class="note" style="margin-top:0">前の回戦の結果がまだ揃っていません。全試合の結果を入力すると、この回戦が組めるようになります。</p>`;
+  }
+
+  el.innerHTML = html;
+
+  el.querySelectorAll(".sw-round-tab").forEach(btn => {
+    btn.addEventListener("click", () => { swActiveRound = Number(btn.dataset.round); renderSwissPanel(); });
+  });
+  const byeSel = document.getElementById("sw-bye-select");
+  if (byeSel) byeSel.addEventListener("change", () => {
+    const prior = rounds.slice(0, idx);
+    state.swiss.results = [...prior, swGeneratePairing(ids, prior, byeSel.value)];
+    pushState();
+    showToast(`不戦勝を${swNameOf(byeSel.value)}に変更し、組み合わせを作り直しました`);
+  });
+  const gen = document.getElementById("sw-gen-round");
+  if (gen) gen.addEventListener("click", () => {
+    state.swiss.results = [...rounds, swGeneratePairing(ids, rounds)];
+    pushState();
+    showToast(`第${state.swiss.results.length}回戦の組み合わせを作りました`);
+  });
+  el.querySelectorAll(".sw-side").forEach(side => {
+    side.addEventListener("click", () => setSwissWinner(Number(side.dataset.round), Number(side.dataset.match), side.dataset.side));
+  });
+}
+
+function setSwissWinner(ri, mi, side) {
+  const rounds = state.swiss.results;
+  const m = rounds[ri][mi];
+  if (m.winner === side) return;
+  const isPast = ri < rounds.length - 1;
+  let msg = null;
+  if (isPast) msg = `第${ri+1}回戦の結果を変更します。第${ri+2}回戦以降はこの変更を反映していないため、自動的に組み合わせを消去します（あとで組み直してください）。よろしいですか？`;
+  else if (m.winner) msg = "すでに決まっている結果を変更しますか？";
+  if (msg && !confirm(msg)) return;
+  m.winner = side;
+  if (isPast) {
+    state.swiss.results = rounds.slice(0, ri + 1);
+    if (swActiveRound > ri) swActiveRound = ri;
+  }
+  pushState();
+}
+
+// ---------- ⚙️設定タブ（スイス式の参加者・回戦数） ----------
+function applyFormatFields() {
+  const swiss = document.getElementById("t-format").value === "swiss";
+  document.getElementById("setup-bracket-fields").style.display = swiss ? "none" : "";
+  document.getElementById("setup-swiss-fields").style.display = swiss ? "" : "none";
+}
+document.getElementById("t-format").addEventListener("change", () => { swDirty = true; applyFormatFields(); });
+document.getElementById("sw-rounds").addEventListener("input", () => { swDirty = true; });
+
+function swRenderSetup() {
+  const addWrap = document.getElementById("sw-add-list");
+  const selWrap = document.getElementById("sw-selected");
+  const countEl = document.getElementById("sw-count");
+  if (!addWrap || !selWrap) return;
+  const selected = new Set(swDraft);
+  const addable = rosterIdsSorted().filter(id => !selected.has(id));
+  addWrap.innerHTML = addable.length
+    ? addable.map(id => `<button type="button" class="sw-add-btn" data-id="${id}">＋ ${escapeHtml(roster[id].name)}</button>`).join("")
+    : `<p class="note" style="margin:0">${rosterIdsSorted().length ? "全員すでに選ばれています。" : "名簿に対局者を登録してください（管理者の仕事内）。"}</p>`;
+  selWrap.innerHTML = swDraft.length
+    ? swDraft.map((id, i) => `
+      <div class="sw-item" data-id="${id}">
+        <div class="sw-num">${i + 1}</div>
+        <div class="sw-name">${escapeHtml(swNameOf(id))}</div>
+        <button type="button" class="sw-remove" data-id="${id}" title="取り消す">✕</button>
+        <div class="sw-handle" title="ドラッグで並び替え">☰</div>
+      </div>`).join("")
+    : `<p class="note" style="margin:0">まだ参加者が選ばれていません。上のリストから追加してください。</p>`;
+  if (countEl) countEl.textContent = `現在 ${swDraft.length}人選択中` +
+    (swDraft.length === 8 ? "（8人のときは通常、形式を「8人勝ち抜き」にします）" : "");
+
+  addWrap.querySelectorAll(".sw-add-btn").forEach(btn => btn.addEventListener("click", () => {
+    swDirty = true; swDraft = [...swDraft, btn.dataset.id]; swRenderSetup();
+  }));
+  selWrap.querySelectorAll(".sw-remove").forEach(btn => btn.addEventListener("click", () => {
+    swDirty = true; swDraft = swDraft.filter(id => id !== btn.dataset.id); swRenderSetup();
+  }));
+  selWrap.querySelectorAll(".sw-handle").forEach(h => h.addEventListener("pointerdown", swDragStart));
+}
+
+// 並び順は☰ハンドルを長押ししてドラッグで入れ替える（「保存して全員に同期」で確定）
+let swDrag = null;
+function swDragStart(e) {
+  const item = e.currentTarget.closest(".sw-item");
+  if (!item) return;
+  e.preventDefault();
+  swDirty = true;
+  swDrag = { item };
+  item.classList.add("dragging");
+  try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+  document.addEventListener("pointermove", swDragMove);
+  document.addEventListener("pointerup", swDragEnd);
+  document.addEventListener("pointercancel", swDragEnd);
+}
+function swDragMove(e) {
+  if (!swDrag) return;
+  const wrap = document.getElementById("sw-selected");
+  const { item } = swDrag;
+  const others = [...wrap.querySelectorAll(".sw-item")].filter(el => el !== item);
+  for (const other of others) {
+    const r = other.getBoundingClientRect();
+    if (e.clientY > r.top && e.clientY < r.bottom) {
+      const ch = [...wrap.children];
+      if (ch.indexOf(item) < ch.indexOf(other)) wrap.insertBefore(item, other.nextSibling);
+      else wrap.insertBefore(item, other);
+      wrap.querySelectorAll(".sw-item .sw-num").forEach((el, i) => { el.textContent = i + 1; });
+      break;
+    }
+  }
+}
+function swDragEnd() {
+  if (!swDrag) return;
+  swDrag.item.classList.remove("dragging");
+  swDrag = null;
+  document.removeEventListener("pointermove", swDragMove);
+  document.removeEventListener("pointerup", swDragEnd);
+  document.removeEventListener("pointercancel", swDragEnd);
+  swDraft = [...document.querySelectorAll("#sw-selected .sw-item")].map(el => el.dataset.id);
+  swRenderSetup();
+}
+
+// ---------- アーカイブ ----------
+function archiveSwissAndReset() {
+  if (archiveRef) {
+    const endDate = state.eventDate
+      ? formatDateDisplay(state.eventDate)
+      : (() => { const now = new Date(); return `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`; })();
+    const names = {};
+    state.swissIds.forEach(id => { names[id] = swNameOf(id); });
+    archiveRef.push({
+      swiss: true,
+      title: tournamentTitle(state.edition),
+      edition: state.edition,
+      eventDate: state.eventDate,
+      endDate,
+      swissIds: state.swissIds,
+      swissNames: names, // 名簿から削除された後も名前が分かるよう、アーカイブ時点でスナップショットする
+      swissRounds: state.swiss.rounds,
+      swissResults: state.swiss.results
+    });
+  }
+  // 参加者・回戦数は引き継ぎ、開催回・開催日・結果を白紙に戻す（段位は変えない）
+  state.edition = ""; state.eventDate = "";
+  state.swiss.results = [];
+  swActiveRound = 0; swDirty = false;
+  pushState();
+  fillSettingsInputs();
+  showToast("アーカイブして新しい大会を開始しました（参加者・回戦数は引き継ぎ）");
+  renderArchive();
+}
+
+function renderArchivedSwiss(container, t) {
+  const ids = swToArr(t.swissIds);
+  const rounds = swNormRounds(t.swissResults);
+  const snap = t.swissNames || {};
+  const roundCount = t.swissRounds || rounds.length;
+  const info = archiveDisplayInfo(t);
+  let html = `<h4 class="section-head" style="margin-top:0">${escapeHtml(info.title)}${info.dateStr ? `（${escapeHtml(info.dateStr)}）` : ""}</h4>`;
+  html += swMatrixHTML(swMatrixList(ids, rounds, snap), rounds, roundCount, snap);
+  container.innerHTML = html;
+}
+
+function renderAll() { renderBracket(); }
+
+// ---------- 設定タブ ----------
+function fillSettingsInputs() {
+  document.getElementById("t-edition").value = state.edition || "";
+  document.getElementById("t-event-date").value = state.eventDate || "";
+  if (!swDirty) {
+    document.getElementById("t-format").value = state.format || "bracket";
+    swDraft = [...(state.swissIds || [])];
+    document.getElementById("sw-rounds").value = (state.swiss && state.swiss.rounds) || 3; // スイス式は通常3回戦
+  }
+  applyFormatFields();
+  swRenderSetup();
+  buildSeedList();
+}
+
+document.getElementById("t-edition").addEventListener("focus", () => editingSetup = true);
+document.getElementById("t-edition").addEventListener("blur",  () => editingSetup = false);
+document.getElementById("t-event-date").addEventListener("focus", () => editingSetup = true);
+document.getElementById("t-event-date").addEventListener("blur",  () => editingSetup = false);
+
+const RANK_SELECT_OPTIONS = ["","初段","二段","三段","四段","五段","六段","七段","八段","九段"];
+
+// 名簿（roster）を名前順に並べたID配列
+function rosterIdsSorted() {
+  return Object.keys(roster).sort((a, b) => (roster[a].name || "").localeCompare((roster[b].name || ""), "ja"));
+}
+
+// ---------- 対局者名簿 ----------
+function rosterItemHTML(id) {
+  const p = roster[id] || { name: "", rank: "" };
+  const opts = RANK_SELECT_OPTIONS.map(r => `<option value="${r}"${p.rank===r?" selected":""}>${r || "－"}</option>`).join("");
+  return `
+    <div class="roster-item" data-id="${id}">
+      <div class="roster-name-wrap">
+        <input type="text" class="roster-name" value="${escapeHtml(p.name || "")}" placeholder="名前">
+        <div class="roster-id" title="${id}">ID: ${id.slice(0, 8)}</div>
+      </div>
+      <select class="roster-rank">${opts}</select>
+      <button type="button" class="roster-del-btn" data-id="${id}">✕</button>
+    </div>`;
+}
+
+function renderRosterList() {
+  const el = document.getElementById("roster-list");
+  if (!el) return;
+  const ids = rosterIdsSorted();
+  el.innerHTML = ids.length
+    ? ids.map(rosterItemHTML).join("")
+    : `<p class="note" style="margin:0">まだ登録された対局者がいません。下のフォームから追加してください。</p>`;
+
+  el.querySelectorAll(".roster-name, .roster-rank").forEach(input => {
+    input.addEventListener("focus", () => editingRoster = true);
+    input.addEventListener("blur",  () => editingRoster = false);
+  });
+  el.querySelectorAll(".roster-del-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      const name = (roster[id] && roster[id].name) || "この対局者";
+      if (!confirm(`${name}を名簿から削除しますか？（過去の大会結果には影響しません）`)) return;
+      delete roster[id];
+      if (rosterRef) rosterRef.set(roster);
+      // 現在の対局者選択に含まれていれば外す
+      if (Array.isArray(state.playerIds)) {
+        state.playerIds = state.playerIds.map(pid => pid === id ? "" : pid);
+        syncDerivedFromRoster();
+        if (stateRef) stateRef.set(state);
+      }
+      refreshLegacyRowOptions();
+      showToast(`${name}を削除しました`);
+    });
+  });
+}
+
+document.getElementById("roster-add-btn").addEventListener("click", () => {
+  const nameInput = document.getElementById("roster-new-name");
+  const rankSelect = document.getElementById("roster-new-rank");
+  const name = nameInput.value.trim();
+  if (!name) { showToast("名前を入力してください"); return; }
+  const id = crypto.randomUUID();
+  roster[id] = { name, rank: rankSelect.value };
+  if (rosterRef) rosterRef.set(roster);
+  nameInput.value = "";
+  rankSelect.value = "";
+  renderRosterList();
+  refreshLegacyRowOptions();
+  showToast(`${name}を名簿に追加しました`);
+});
+
+document.getElementById("roster-save-btn").addEventListener("click", () => {
+  document.querySelectorAll("#roster-list .roster-item").forEach(el => {
+    const id = el.dataset.id;
+    const name = el.querySelector(".roster-name").value.trim();
+    const rank = el.querySelector(".roster-rank").value;
+    if (roster[id]) roster[id] = { name, rank };
+  });
+  if (rosterRef) rosterRef.set(roster);
+  syncDerivedFromRoster();
+  if (stateRef) stateRef.set(state);
+  buildSeedList();
+  refreshLegacyRowOptions();
+  showToast("名簿の変更を保存し、全員に同期しました！");
+});
+
+// ---------- 対局者（1〜8）選択：名簿から選ぶドロップダウン ----------
+function seedItemHTML(i, selectedId) {
+  const ids = rosterIdsSorted();
+  const opts = `<option value="">（未定）</option>` + ids.map(id => {
+    const p = roster[id];
+    const label = p.rank ? `${p.name}（${p.rank}）` : p.name;
+    return `<option value="${id}"${id===selectedId?" selected":""}>${escapeHtml(label)}</option>`;
+  }).join("");
+  return `
+    <div class="seed-item">
+      <div class="seed-num">${i+1}</div>
+      <select class="seed-player">${opts}</select>
+      <div class="seed-handle" title="ドラッグで並び替え">☰</div>
+    </div>`;
+}
+
+function buildSeedList() {
+  const list = document.getElementById("seed-list");
+  if (!list) return;
+  const ids = Array.isArray(state.playerIds) ? state.playerIds : ["","","","","","","",""];
+  list.innerHTML = ids.map((id, i) => seedItemHTML(i, id || "")).join("");
+  attachSeedListEvents();
+}
+
+function attachSeedListEvents() {
+  const list = document.getElementById("seed-list");
+  if (!list) return;
+  list.querySelectorAll(".seed-player").forEach(el => {
+    el.addEventListener("focus", () => editingSetup = true);
+    el.addEventListener("blur",  () => editingSetup = false);
+  });
+  list.querySelectorAll(".seed-handle").forEach(handle => {
+    handle.addEventListener("pointerdown", onSeedDragStart);
+  });
+}
+
+// 対局者の並び順（シード順）を、行右端の☰ハンドルを長押ししてドラッグすることで
+// 入れ替える。Firebaseにはまだ書き込まず、「保存して全員に同期」を押した時点で
+// 反映される（他の設定項目と同じ挙動に揃えている）。
+let seedDrag = null;
+
+function onSeedDragStart(e) {
+  const item = e.currentTarget.closest(".seed-item");
+  if (!item) return;
+  e.preventDefault();
+  editingSetup = true; // ドラッグ中はFirebase更新で並びが上書きされないようにする
+  seedDrag = { item };
+  item.classList.add("dragging");
+  try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+  document.addEventListener("pointermove", onSeedDragMove);
+  document.addEventListener("pointerup", onSeedDragEnd);
+  document.addEventListener("pointercancel", onSeedDragEnd);
+}
+
+function onSeedDragMove(e) {
+  if (!seedDrag) return;
+  const list = document.getElementById("seed-list");
+  if (!list) return;
+  const { item } = seedDrag;
+  const y = e.clientY;
+  const others = [...list.querySelectorAll(".seed-item")].filter(el => el !== item);
+  for (const other of others) {
+    const r = other.getBoundingClientRect();
+    if (y > r.top && y < r.bottom) {
+      const children = [...list.children];
+      if (children.indexOf(item) < children.indexOf(other)) list.insertBefore(item, other.nextSibling);
+      else list.insertBefore(item, other);
+      renumberSeedList();
+      break;
+    }
+  }
+}
+
+function onSeedDragEnd() {
+  if (!seedDrag) return;
+  seedDrag.item.classList.remove("dragging");
+  seedDrag = null;
+  document.removeEventListener("pointermove", onSeedDragMove);
+  document.removeEventListener("pointerup", onSeedDragEnd);
+  document.removeEventListener("pointercancel", onSeedDragEnd);
+  editingSetup = false;
+  renumberSeedList();
+}
+
+function renumberSeedList() {
+  document.querySelectorAll("#seed-list .seed-item .seed-num").forEach((el, i) => { el.textContent = i + 1; });
+}
+
+function hasBracketResults() {
+  return JSON.stringify(state.results) !== JSON.stringify(emptyResults());
+}
+
+document.getElementById("save-setup").addEventListener("click", () => {
+  const fmt = document.getElementById("t-format").value;
+  if (state.format !== fmt) {
+    const curHas = state.format === "swiss" ? state.swiss.results.length > 0 : hasBracketResults();
+    if (curHas && !confirm("形式を切り替えます。今の形式の結果は画面に表示されなくなります（データは残ります）。よろしいですか？")) return;
+  }
+  if (fmt === "swiss") {
+    const rounds = parseInt(document.getElementById("sw-rounds").value, 10);
+    if (swDraft.length < 3) { showToast("参加者を3人以上選んでください"); return; }
+    if (!rounds || rounds < 1) { showToast("回戦数を正しく入力してください"); return; }
+    if (swDraft.length === 8 && !confirm("参加者が8人です。8人のときは通常、形式を「8人勝ち抜き」にします。スイス式のまま保存しますか？")) return;
+    const changed = state.swiss.results.length > 0 &&
+      (rounds !== state.swiss.rounds || JSON.stringify(swDraft) !== JSON.stringify(state.swissIds));
+    if (changed && !confirm("すでに対局結果があります。参加者や回戦数を変えると、結果と組み合わせに影響する可能性があります。よろしいですか？")) return;
+    state.format    = "swiss";
+    state.edition   = document.getElementById("t-edition").value.trim();
+    state.eventDate = document.getElementById("t-event-date").value;
+    state.swissIds  = [...swDraft];
+    state.swiss.rounds = rounds;
+    swDirty = false;
+    pushState();
+    showToast("設定を保存し、全員に同期しました！");
+    return;
+  }
+  const items = [...document.querySelectorAll("#seed-list .seed-item")];
+  const ids = items.map(el => el.querySelector(".seed-player").value);
+  const nonEmpty = ids.filter(id => id);
+  if (new Set(nonEmpty).size !== nonEmpty.length) { showToast("同じ対局者が複数選ばれています"); return; }
+
+  state.format    = "bracket";
+  swDirty = false;
+  state.edition   = document.getElementById("t-edition").value.trim();
+  state.eventDate = document.getElementById("t-event-date").value;
+  state.playerIds = ids;
+  syncDerivedFromRoster();
+  pushState();
+  showToast("設定を保存し、全員に同期しました！");
+});
+
+
+document.getElementById("admin-toggle").addEventListener("click", () => {
+  const body = document.getElementById("admin-body");
+  const arrow = document.getElementById("admin-arrow");
+  const isOpen = body.style.display !== "none";
+  body.style.display = isOpen ? "none" : "";
+  arrow.textContent = isOpen ? "▶" : "▼";
+  if (!isOpen) renderLegacyManageList();
+});
+
+document.getElementById("reset-results").addEventListener("click", () => {
+  if (!confirm("対局結果をすべて消去します。対局者名はそのまま残ります。よろしいですか？")) return;
+  if (state.format === "swiss") { state.swiss.results = []; swActiveRound = 0; }
+  else state.results = emptyResults();
+  pushState();
+  showToast("結果をリセットしました");
+});
+
+document.getElementById("new-tournament").addEventListener("click", () => {
+  if (!confirm("現在の大会をアーカイブし、新しい大会を始めます。対局者と大石道場杯段位は、今回の昇段・降段結果を反映して名簿に引き継がれます（設定タブで編集できます）。開催回・開催日は入力し直してください。よろしいですか？")) return;
+  if (state.format === "swiss") { archiveSwissAndReset(); return; }
+  if (archiveRef) {
+    const endDate = state.eventDate
+      ? formatDateDisplay(state.eventDate)
+      : (() => { const now = new Date(); return `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`; })();
+    archiveRef.push({
+      title: tournamentTitle(state.edition), // 互換表示用（アーカイブ一覧の表示に使う）
+      edition: state.edition,
+      eventDate: state.eventDate,
+      endDate,
+      playerIds: Array.isArray(state.playerIds) ? state.playerIds : null,
+      players: state.players, ranks: state.ranks, results: state.results
+    });
+  }
+  // 昇段・降段結果を、対局者名簿（roster）側に直接反映する
+  const nextRanks = computeNextRanks(state.players, state.ranks, state.results);
+  if (Array.isArray(state.playerIds)) {
+    state.playerIds.forEach((id, i) => {
+      if (id && roster[id]) roster[id] = { ...roster[id], rank: nextRanks[i] || "" };
+    });
+    if (rosterRef) rosterRef.set(roster);
+  }
+  state = { edition:"", eventDate:"", playerIds: Array.isArray(state.playerIds) ? [...state.playerIds] : ["","","","","","","",""], players: [...state.players], ranks: nextRanks, results: emptyResults(), format: state.format, swissIds: state.swissIds, swiss: state.swiss };
+  pushState();
+  fillSettingsInputs();
+  showToast("対局者・大石道場杯段位を引き継いで新しい大会を開始しました");
+  renderArchive();
+});
+
+// ---------- 完全リセット ----------
+// 「新しい大会にする」とは異なり、現在の大会をアーカイブに保存せず、
+// 過去のアーカイブも含めてすべて消去する（テスト中のやり直し用）。
+// 対局者名簿（roster）は人の登録情報なので、ここでは消去しない。
+document.getElementById("full-reset").addEventListener("click", () => {
+  if (!confirm("現在の大会と、過去のアーカイブをすべて消去して真っさらに戻します（対局者名簿は残ります）。\nこの操作は取り消せません。本当によいですか？")) return;
+  if (archiveRef) archiveRef.remove();
+  state = { edition:"", eventDate:"", playerIds:["","","","","","","",""], players:["","","","","","","",""], ranks:["","","","","","","",""], results: emptyResults(), format:"bracket", swissIds:[], swiss:{ rounds:null, results:[] } };
+  swDirty = false; swActiveRound = 0;
+  pushState();
+  fillSettingsInputs();
+  showToast("完全リセットしました。");
+  renderArchive();
+});
+
+// アーカイブが月1ペースで増えていくと一覧が長くなるため、最初は直近ARCHIVE_PAGE_SIZE件だけ表示し、
+// 「もっと見る」を押した時だけ全件展開する
+const ARCHIVE_PAGE_SIZE = 6;
+let archiveShowAll = false;
+
+// アーカイブ表示用の大会名・開催日を組み立てる。新形式（edition/eventDate）を優先し、
+// 旧形式で保存された過去データ（title/endDateのみ）にもそのままフォールバックする。
+function archiveDisplayInfo(t) {
+  const title = t.edition ? tournamentTitle(t.edition) : (t.title || "大石道場杯");
+  const dateStr = t.eventDate ? formatDateDisplay(t.eventDate) : (t.endDate || "");
+  return { title, dateStr };
+}
+
+// 全期間の通算成績（アーカイブ済みの全大会＋簡易記録＋進行中の現在の大会）を対局者ごとに集計して表示する。
+// 名簿ID（playerIds）が保存されている大会はIDで集計するため、名前を打ち直しても同一人物として
+// 引き継がれる。IDが無い旧データ（この機能導入前のアーカイブ）は、従来通り名前文字列の完全一致で
+// フォールバック集計する。8人以外の大会は、legacy:trueの簡易記録（名前ごとの勝敗数のみ）
+// として別途登録でき、それもここで合算する。
+function renderAllTimeRecord(archiveList) {
+  const el = document.getElementById("alltime-record");
+  if (!el) return;
+
+  const tally = {};       // key: "id:xxx" または "name:xxx"
+  const displayName = {}; // key -> 表示する名前
+
+  function mergeTournament(players, results, playerIds) {
+    const nameTally = tallyTournamentRecord(players, results);
+    Object.keys(nameTally).forEach(name => {
+      const idx = players.indexOf(name);
+      const id = (Array.isArray(playerIds) && idx !== -1) ? playerIds[idx] : null;
+      const key = id ? `id:${id}` : `name:${name}`;
+      if (!tally[key]) tally[key] = { wins: 0, losses: 0 };
+      tally[key].wins   += nameTally[name].wins;
+      tally[key].losses += nameTally[name].losses;
+      // 表示名は、IDが分かればその時点の名簿の名前を優先する（改名しても最新表記でまとまる）
+      displayName[key] = (id && roster[id] && roster[id].name) ? roster[id].name : name;
+    });
+  }
+
+  function mergeLegacy(records) {
+    (records || []).forEach(r => {
+      if (!r || !r.id) return;
+      const key = `id:${r.id}`;
+      if (!tally[key]) tally[key] = { wins: 0, losses: 0 };
+      tally[key].wins   += r.wins   || 0;
+      tally[key].losses += r.losses || 0;
+      displayName[key] = (roster[r.id] && roster[r.id].name) || r.name || "";
+    });
+  }
+
+  function mergeSwiss(ids, rounds, names) {
+    const { wins, losses } = swScores(rounds, true); // 通算成績には不戦勝を数えない
+    ids.forEach(id => {
+      const w = wins[id] || 0, l = losses[id] || 0;
+      if (!w && !l) return;
+      const key = `id:${id}`;
+      if (!tally[key]) tally[key] = { wins: 0, losses: 0 };
+      tally[key].wins += w; tally[key].losses += l;
+      displayName[key] = (roster[id] && roster[id].name) || (names && names[id]) || "";
+    });
+  }
+
+  archiveList.forEach(t => {
+    if (t.swiss) { mergeSwiss(swToArr(t.swissIds), swNormRounds(t.swissResults), t.swissNames); return; }
+    if (t.legacy) { mergeLegacy(t.records); return; }
+    const players = Array.isArray(t.players) && t.players.length === 8 ? t.players : ["","","","","","","",""];
+    mergeTournament(players, normalizeResults(t.results), t.playerIds);
+  });
+  // 進行中の大会も合算する（今の形式のものだけ）
+  if (state.format === "swiss") mergeSwiss(state.swissIds, state.swiss.results, null);
+  else mergeTournament(state.players, state.results, state.playerIds);
+
+  const rows = Object.keys(tally)
+    .map(key => ({ name: displayName[key] || "", wins: tally[key].wins, losses: tally[key].losses }))
+    .filter(r => r.name)
+    .sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+
+  if (rows.length === 0) {
+    el.innerHTML = `<p style="color:#999;font-size:0.88rem">まだ対局結果がありません。</p>`;
+    return;
+  }
+  const medals = ["🥇","🥈","🥉"];
+  // 同じ勝敗数（＝同じ勝率）のプレイヤーは同じ順位として表示する
+  // （例：2勝2敗が5人並んだ場合は全員「4位」、次に違う成績の人が来たら「9位」に飛ぶ）。
+  let displayRank = 0, prevWins = null, prevLosses = null;
+  el.innerHTML = rows.map((r, i) => {
+    if (r.wins !== prevWins || r.losses !== prevLosses) {
+      displayRank = i + 1;
+      prevWins = r.wins; prevLosses = r.losses;
+    }
+    return `
+    <div class="standings-row">
+      <div class="standings-num">${medals[displayRank - 1] || displayRank}</div>
+      <div class="standings-name" style="flex:1">${escapeHtml(r.name)}</div>
+      <div style="font-size:0.86rem;color:#666;white-space:nowrap;flex-shrink:0">${r.wins}勝 ${r.losses}敗${winRateStr(r.wins, r.losses)}</div>
+    </div>`;
+  }).join("");
+}
+
+// 開催日（eventDate優先、無ければendDate）を比較可能な数値に変換する。
+// 過去の記録を後からまとめて登録しても、実際の開催日順に正しく並ぶようにするため。
+function archiveDateValue(t) {
+  if (t.eventDate) {
+    const [y, m, d] = t.eventDate.split("-").map(Number);
+    if (y && m && d) return y * 10000 + m * 100 + d;
+  }
+  if (t.endDate) {
+    const parts = t.endDate.split("/").map(Number);
+    if (parts.length === 3 && !parts.some(isNaN)) return parts[0] * 10000 + parts[1] * 100 + parts[2];
+  }
+  return 0;
+}
+
+function renderArchive() {
+  const el = document.getElementById("archive-list");
+  if (!el || !archiveRef) return;
+  archiveRef.once("value", snap => {
+    const data = snap.val();
+    // 実際の開催日の新しい順に並べる（同日・日付不明の場合はFirebaseのpushキー＝登録順で補う）。
+    // 過去分をあとからまとめて登録しても、登録順ではなく開催日順で正しく並ぶようにするため。
+    const list = data
+      ? Object.entries(data).sort((a, b) => {
+          const dv = archiveDateValue(b[1]) - archiveDateValue(a[1]);
+          return dv !== 0 ? dv : b[0].localeCompare(a[0]);
+        }).map(([, v]) => v)
+      : [];
+
+    renderAllTimeRecord(list);
+
+    if (!list.length) { el.innerHTML = `<p class="note" style="margin:0">まだアーカイブされた大会はありません。</p>`; return; }
+    const showCount = archiveShowAll ? list.length : Math.min(ARCHIVE_PAGE_SIZE, list.length);
+    const visible = list.slice(0, showCount);
+
+    let html = visible.map((t, i) => {
+      const info = archiveDisplayInfo(t);
+      if (t.swiss) {
+        const sNames = swToArr(t.swissIds).map(id => swNameOf(id, t.swissNames)).join("・");
+        return `
+        <div class="archive-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div>
+              <strong>${escapeHtml(info.title)}</strong>（${escapeHtml(info.dateStr)}）
+              <span style="display:inline-block;background:#2c3e50;color:#fff;font-size:0.66rem;font-weight:bold;padding:1px 7px;border-radius:10px;margin-left:6px;vertical-align:middle">スイス式</span><br>
+              <span style="color:#666">対局者：${escapeHtml(sNames)}</span>
+            </div>
+            <button type="button" class="archive-view-btn" data-idx="${i}" style="background:#fff;border:1px solid #ddd8cc;border-radius:6px;padding:5px 10px;font-size:0.78rem;cursor:pointer;flex-shrink:0;white-space:nowrap">結果を見る</button>
+          </div>
+          <div class="archive-detail" data-idx="${i}" data-type="swiss" style="display:none;margin-top:12px"></div>
+        </div>`;
+      }
+      if (t.legacy) {
+        // 順位が入力されている行を優先して昇順に並べる（未入力は元の登録順のまま後ろへ）
+        const sortedRecords = (t.records || []).map((r, ri) => ({ r, ri })).sort((a, b) => {
+          const ra = a.r.rank || Infinity, rb = b.r.rank || Infinity;
+          return ra !== rb ? ra - rb : a.ri - b.ri;
+        }).map(x => x.r);
+        const recordsHTML = sortedRecords.map(r =>
+          `<div style="display:flex;align-items:center;gap:8px;font-size:0.84rem;padding:3px 0">
+            <span style="width:28px;flex-shrink:0;text-align:center;color:#b89752;font-weight:bold">${legacyRankLabel(r.rank)}</span>
+            <span style="flex:1;min-width:0">${escapeHtml((roster[r.id] && roster[r.id].name) || r.name || "")}</span>
+            <span style="color:#666;white-space:nowrap;flex-shrink:0">${r.wins}勝 ${r.losses}敗${winRateStr(r.wins, r.losses)}</span>
+          </div>`
+        ).join("");
+        return `
+        <div class="archive-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div>
+              <strong>${escapeHtml(info.title)}</strong>（${escapeHtml(info.dateStr)}）
+              <span style="display:inline-block;background:#b89752;color:#fff;font-size:0.66rem;font-weight:bold;padding:1px 7px;border-radius:10px;margin-left:6px;vertical-align:middle">簡易記録</span>
+            </div>
+            <button type="button" class="archive-view-btn" data-idx="${i}" style="background:#fff;border:1px solid #ddd8cc;border-radius:6px;padding:5px 10px;font-size:0.78rem;cursor:pointer;flex-shrink:0;white-space:nowrap">結果を見る</button>
+          </div>
+          <div class="archive-detail" data-idx="${i}" data-type="legacy" style="display:none;margin-top:12px;border-top:1px dashed #ddd8cc;padding-top:6px">${recordsHTML}</div>
+        </div>`;
+      }
+      return `
+      <div class="archive-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div>
+            <strong>${escapeHtml(info.title)}</strong>（${escapeHtml(info.dateStr)}）<br>
+            <span style="color:#666">対局者：${(t.players||[]).filter(p=>p).join("・")}</span>
+          </div>
+          <button type="button" class="archive-view-btn" data-idx="${i}" style="background:#fff;border:1px solid #ddd8cc;border-radius:6px;padding:5px 10px;font-size:0.78rem;cursor:pointer;flex-shrink:0;white-space:nowrap">結果を見る</button>
+        </div>
+        <div class="archive-detail" data-idx="${i}" data-type="bracket" style="display:none;margin-top:12px"></div>
+      </div>`;
+    }).join("");
+
+    if (!archiveShowAll && list.length > showCount) {
+      html += `<button type="button" id="archive-show-more" class="btn" style="background:#f1f0ea;color:#2c3e50;margin-top:4px">もっと見る（残り${list.length - showCount}件）</button>`;
+    }
+
+    el.innerHTML = html;
+
+    el.querySelectorAll(".archive-view-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const i = Number(btn.dataset.idx);
+        const detail = el.querySelector(`.archive-detail[data-idx="${i}"]`);
+        const isOpen = detail.style.display !== "none";
+        if (isOpen) {
+          detail.style.display = "none";
+          btn.textContent = "結果を見る";
+        } else {
+          detail.style.display = ""; // 先に表示してから描画（幅計算のため）
+          if (detail.dataset.type === "bracket") renderArchivedTournament(detail, visible[i]);
+          else if (detail.dataset.type === "swiss") renderArchivedSwiss(detail, visible[i]);
+          btn.textContent = "閉じる";
+        }
+      });
+    });
+
+    const moreBtn = document.getElementById("archive-show-more");
+    if (moreBtn) moreBtn.addEventListener("click", () => { archiveShowAll = true; renderArchive(); });
+  });
+}
+
+// アーカイブされた1大会の中身（トーナメント図・順位）を、今の画面と同じ形式で描画する。
+// 過去の記録なので読み取り専用（renderBracketDiagramにonSlotClickを渡さない＝タップ不可）。
+function renderArchivedTournament(container, t) {
+  const players = Array.isArray(t.players) && t.players.length === 8 ? t.players : ["","","","","","","",""];
+  const ranks   = Array.isArray(t.ranks)   && t.ranks.length   === 8 ? t.ranks   : ["","","","","","","",""];
+  const results = normalizeResults(t.results);
+
+  const finalR   = getFinalResult(players, results);
+  const thirdR   = getThirdResult(players, results);
+  const fifthR   = getFifthResult(players, results);
+  const seventhR = getSeventhResult(players, results);
+  const placements = computePlacements(players, results);
+
+  const info = archiveDisplayInfo(t);
+  let html = `<h4 class="section-head" style="margin-top:0">${escapeHtml(info.title)}${info.dateStr ? `（${escapeHtml(info.dateStr)}）` : ""}</h4>`;
+  html += `<div class="bracket-block"><div class="bracket-block-title">本戦</div><div class="ad-bd-main"></div></div>`;
+  html += `<div class="bracket-block"><div class="bracket-block-title">3位決定戦</div><div class="ad-bd-third"></div></div>`;
+  html += `<div class="bracket-divider"></div>`;
+  html += `<div class="bracket-block"><div class="bracket-block-title">5位決定戦</div><div class="ad-bd-fifth"></div></div>`;
+  html += `<div class="bracket-block"><div class="bracket-block-title">7位決定戦</div><div class="ad-bd-seventh"></div></div>`;
+
+  html += `<h4 class="section-head">🏅 順位</h4>`;
+  // その大会で段位が誰にも設定されていなければ、昇段・降段バッジは出さない
+  const hasAnyRank = players.some((name, i) => name && ranks[i]);
+  html += placements.map(p => {
+    const rank = getPlayerRank(p.name, players, ranks);
+    const badge = (p.name && hasAnyRank) ? rankChangeBadgeHTML(p.rank) : "";
+    const nameHTML = p.name
+      ? escapeHtml(p.name) + (rank ? ` <span style="font-weight:normal;color:#b89752;font-size:0.8rem">${escapeHtml(rank)}</span>` : "") + badge
+      : '<span style="color:#bbb;font-weight:normal">未定</span>';
+    return `
+    <div class="standings-row">
+      <div class="standings-num">${p.medal}</div>
+      <div class="standings-name">${nameHTML}</div>
+    </div>`;
+  }).join("");
+
+  container.innerHTML = html;
+
+  renderBracketDiagram(
+    container.querySelector(".ad-bd-main"),
+    players,
+    [ results.qf, results.sf, [results.final] ],
+    finalR.winner, finalR.loser, ["優勝", "準優勝"]
+  );
+  renderBracketDiagram(
+    container.querySelector(".ad-bd-third"),
+    getThirdPlayers(players, results),
+    [ [results.third] ],
+    thirdR.winner, thirdR.loser, ["第3位", "第4位"]
+  );
+  renderBracketDiagram(
+    container.querySelector(".ad-bd-fifth"),
+    [getQFResult(0, players, results).loser, getQFResult(1, players, results).loser, getQFResult(2, players, results).loser, getQFResult(3, players, results).loser],
+    [ results.cLower, [results.fifth] ],
+    fifthR.winner, fifthR.loser, ["第5位", "第6位"]
+  );
+  renderBracketDiagram(
+    container.querySelector(".ad-bd-seventh"),
+    getSeventhPlayers(players, results),
+    [ [results.seventh] ],
+    seventhR.winner, seventhR.loser, ["第7位", "第8位"]
+  );
+}
+
+// ---------- 8人以外の大会記録（人数を問わない簡易記録） ----------
+// 8人固定のブラケット形式に当てはまらない大会（過去大会・人数の異なる今後の大会の
+// どちらも）のために、トーナメント図なしで対局者ごとの勝敗数だけを記録できる簡易フォーム。
+// 保存先はarchiveRefに legacy:true として積まれ、通常のアーカイブと同じ一覧に並ぶ。
+let legacyRowSeq = 0;
+
+function legacyRowHTML(key, initial) {
+  const ids = rosterIdsSorted();
+  const selId = (initial && initial.id) || "";
+  const opts = `<option value="">（選択してください）</option>` + ids.map(id => {
+    const p = roster[id];
+    const label = p.rank ? `${p.name}（${p.rank}）` : p.name;
+    return `<option value="${id}"${id===selId?" selected":""}>${escapeHtml(label)}</option>`;
+  }).join("");
+  const rankVal   = (initial && initial.rank)   ? initial.rank   : "";
+  const winsVal   = (initial && initial.wins)   ? initial.wins   : "";
+  const lossesVal = (initial && initial.losses) ? initial.losses : "";
+  return `
+    <div class="legacy-row" data-key="${key}">
+      <div class="legacy-row-top">
+        <select class="legacy-player">${opts}</select>
+        <button type="button" class="legacy-row-del">✕</button>
+      </div>
+      <div class="legacy-fields">
+        <div class="legacy-field"><label>順位（任意）</label><input type="number" class="legacy-rank" min="1" inputmode="numeric" placeholder="例：1" value="${rankVal}"></div>
+        <div class="legacy-field"><label>勝</label><input type="number" class="legacy-wins" min="0" inputmode="numeric" placeholder="0" value="${winsVal}"></div>
+        <div class="legacy-field"><label>敗</label><input type="number" class="legacy-losses" min="0" inputmode="numeric" placeholder="0" value="${lossesVal}"></div>
+      </div>
+    </div>`;
+}
+
+// initial（{id, wins, losses, rank}）を渡すと、既存の値が入った状態で行を追加する（編集読み込み用）
+function addLegacyRow(initial) {
+  const wrap = document.getElementById("legacy-rows");
+  if (!wrap) return;
+  const key = `r${legacyRowSeq++}`;
+  wrap.insertAdjacentHTML("beforeend", legacyRowHTML(key, initial));
+  const row = wrap.querySelector(`.legacy-row[data-key="${key}"]`);
+  row.querySelector(".legacy-row-del").addEventListener("click", () => row.remove());
+}
+
+// 過去大会記録フォームの行は、Firebaseから名簿（roster）が届く前に
+// 初期4行が作られてしまうことがあり、その場合は参加者の選択肢が
+// 「（選択してください）」しか無い状態になってしまう。
+// 名簿の読み込み・更新のたびに呼び、既存の行を壊さずに選択肢だけを
+// 最新の名簿に合わせて作り直す（選択済みの値があれば維持する）。
+function refreshLegacyRowOptions() {
+  document.querySelectorAll("#legacy-rows .legacy-player").forEach(sel => {
+    const current = sel.value;
+    const ids = rosterIdsSorted();
+    const opts = `<option value="">（選択してください）</option>` + ids.map(id => {
+      const p = roster[id];
+      const label = p.rank ? `${p.name}（${p.rank}）` : p.name;
+      return `<option value="${id}"${id===current?" selected":""}>${escapeHtml(label)}</option>`;
+    }).join("");
+    sel.innerHTML = opts;
+  });
+}
+
+function resetLegacyForm() {
+  const editionEl = document.getElementById("legacy-edition");
+  const dateEl  = document.getElementById("legacy-date");
+  const wrap    = document.getElementById("legacy-rows");
+  if (!editionEl || !dateEl || !wrap) return;
+  editionEl.value = "";
+  dateEl.value  = "";
+  wrap.innerHTML = "";
+  legacyRowSeq = 0;
+  for (let i = 0; i < 4; i++) addLegacyRow(); // 初期4行（＋ボタンで追加可能）
+}
+
+const legacyAddRowBtn = document.getElementById("legacy-add-row");
+if (legacyAddRowBtn) legacyAddRowBtn.addEventListener("click", () => addLegacyRow());
+
+// 編集中の簡易記録のFirebaseキー（新規追加時はnull）
+let editingLegacyKey = null;
+
+function exitLegacyEditMode() {
+  editingLegacyKey = null;
+  document.getElementById("legacy-save").textContent = "この記録を保存";
+  document.getElementById("legacy-editing-note").style.display = "none";
+  document.getElementById("legacy-cancel-edit").style.display = "none";
+}
+
+const legacyCancelEditBtn = document.getElementById("legacy-cancel-edit");
+if (legacyCancelEditBtn) legacyCancelEditBtn.addEventListener("click", () => {
+  exitLegacyEditMode();
+  resetLegacyForm();
+});
+
+const legacySaveBtn = document.getElementById("legacy-save");
+if (legacySaveBtn) legacySaveBtn.addEventListener("click", () => {
+  const edition = document.getElementById("legacy-edition").value.trim();
+  const dateVal = document.getElementById("legacy-date").value;
+  const rows = [...document.querySelectorAll("#legacy-rows .legacy-row")];
+  const records = [];
+  for (const row of rows) {
+    const id = row.querySelector(".legacy-player").value;
+    if (!id) continue;
+    const wins   = parseInt(row.querySelector(".legacy-wins").value, 10)   || 0;
+    const losses = parseInt(row.querySelector(".legacy-losses").value, 10) || 0;
+    const rankRaw = row.querySelector(".legacy-rank").value.trim();
+    const rank = rankRaw ? (parseInt(rankRaw, 10) || null) : null;
+    if (wins === 0 && losses === 0 && !rank) continue; // 未入力の行は無視
+    records.push({ id, name: (roster[id] && roster[id].name) || "", wins, losses, rank });
+  }
+  if (records.length === 0) { showToast("参加者と勝敗数（または順位）を入力してください"); return; }
+  const dupIds = records.map(r => r.id);
+  if (new Set(dupIds).size !== dupIds.length) { showToast("同じ対局者が複数の行に入力されています"); return; }
+
+  const endDate = dateVal
+    ? formatDateDisplay(dateVal)
+    : (() => { const now = new Date(); return `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`; })();
+
+  // 大会名は「大石道場杯」固定（tournamentTitle()が開催回の有無に応じて組み立てる）。
+  // 開催回が分かれば、通常の大会と同じ「大石道場杯 第◯回」表示になる
+  // （archiveDisplayInfo()はt.editionがあればそちらを優先して表示する）。
+  const payload = { legacy: true, edition, eventDate: dateVal, endDate, records };
+  const wasEditing = !!editingLegacyKey;
+  if (archiveRef) {
+    if (editingLegacyKey) archiveRef.child(editingLegacyKey).set(payload);
+    else archiveRef.push(payload);
+  }
+  exitLegacyEditMode();
+  resetLegacyForm();
+  showToast(wasEditing ? "記録を更新しました" : "記録を追加しました");
+  renderArchive();
+  renderLegacyManageList();
+});
+
+// ---------- 登録済みの簡易記録の修正・削除 ----------
+// 上のフォーム（8人以外の大会記録を追加）に既存データを読み込んで編集できるようにする。
+// 通常のアーカイブ一覧（renderArchive）はFirebaseのキーを保持しないため、
+// 編集・削除にはキーが必要なこの専用の一覧を別途取得する。
+function renderLegacyManageList() {
+  const el = document.getElementById("legacy-manage-list");
+  if (!el || !archiveRef) return;
+  archiveRef.once("value", snap => {
+    const data = snap.val();
+    const entries = data
+      ? Object.entries(data).filter(([, v]) => v && v.legacy).sort((a, b) => {
+          const dv = archiveDateValue(b[1]) - archiveDateValue(a[1]);
+          return dv !== 0 ? dv : b[0].localeCompare(a[0]);
+        })
+      : [];
+
+    if (!entries.length) {
+      el.innerHTML = `<p class="note" style="margin:0">まだ簡易記録は登録されていません。</p>`;
+      return;
+    }
+
+    el.innerHTML = entries.map(([key, t]) => {
+      const info = archiveDisplayInfo(t);
+      const names = (t.records || []).map(r => (roster[r.id] && roster[r.id].name) || r.name || "").filter(Boolean).join("・");
+      return `
+      <div class="archive-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div style="min-width:0">
+            <strong>${escapeHtml(info.title)}</strong>（${escapeHtml(info.dateStr)}）
+            <div style="font-size:0.76rem;color:#888;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(names)}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button type="button" class="legacy-edit-btn" data-key="${key}" style="background:#fff;border:1px solid #ddd8cc;border-radius:6px;padding:5px 10px;font-size:0.78rem;cursor:pointer">編集</button>
+            <button type="button" class="legacy-delete-btn" data-key="${key}" style="background:#fdf1ef;border:1px solid #e0b3ac;color:#b03a2e;border-radius:6px;padding:5px 10px;font-size:0.78rem;cursor:pointer">削除</button>
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+
+    el.querySelectorAll(".legacy-edit-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const key = btn.dataset.key;
+        const entry = entries.find(([k]) => k === key);
+        if (!entry) return;
+        const t = entry[1];
+        editingLegacyKey = key;
+        document.getElementById("legacy-edition").value = t.edition || "";
+        document.getElementById("legacy-date").value = t.eventDate || "";
+        const wrap = document.getElementById("legacy-rows");
+        wrap.innerHTML = "";
+        legacyRowSeq = 0;
+        const recs = (t.records && t.records.length) ? t.records : [null];
+        recs.forEach(r => addLegacyRow(r));
+        document.getElementById("legacy-save").textContent = "この記録を更新する";
+        document.getElementById("legacy-editing-note").style.display = "";
+        document.getElementById("legacy-cancel-edit").style.display = "";
+        document.getElementById("legacy-edition").scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    });
+
+    el.querySelectorAll(".legacy-delete-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const key = btn.dataset.key;
+        if (!confirm("この簡易記録を削除します。この操作は取り消せません。よろしいですか？")) return;
+        if (archiveRef) archiveRef.child(key).remove();
+        if (editingLegacyKey === key) { exitLegacyEditMode(); resetLegacyForm(); }
+        showToast("記録を削除しました");
+        renderArchive();
+        renderLegacyManageList();
+      });
+    });
+  });
+}
+
+resetLegacyForm();
+renderLegacyManageList();
+
+// ---------- データエクスポート ----------
+document.getElementById("export-btn").addEventListener("click", () => {
+  if (!isConfigured) { showToast("データベースに接続されていません"); return; }
+  firebase.database().ref("tournament").once("value", snap => {
+    const data = snap.val();
+    if (!data) { showToast("エクスポートするデータがありません"); return; }
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `tournament_backup_${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("エクスポートしました");
+  });
+});
+
+// ---------- トースト ----------
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.style.display = "block";
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.style.display = "none", 2500);
+}
+
+// ---------- タブを縦スクロールしても常に表示する ----------
+// ヘッダーもsticky（top:0）のため、タブもtop:0のままだとヘッダーの裏に隠れてしまう。
+// タブの位置をヘッダーの高さに合わせて、ヘッダーのすぐ下に固定する。
+(function() {
+  const header = document.getElementById("header");
+  const nav = document.getElementById("nav");
+  function adjustNavTop() { if (header && nav) nav.style.top = header.offsetHeight + "px"; }
+  adjustNavTop();
+  window.addEventListener("resize", adjustNavTop);
+  window.addEventListener("load", adjustNavTop);
+  if (window.ResizeObserver && header) new ResizeObserver(adjustNavTop).observe(header); // 同期状態の表示などで高さが変わったとき
+})();
+
+fillSettingsInputs();
+renderAll();
+</script>
+</body>
+</html>
