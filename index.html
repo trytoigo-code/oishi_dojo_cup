@@ -32,7 +32,11 @@
 
 【収録メニュー（現時点）】
   - 大石道場杯（tournament.html）：午前は下地玄昭先生の指導碁会、午後は大会（3回戦）
-  - 囲碁クラブ下地会（https://shimojikai.wsfpro.net/）：外部サイト。新しいタブで開く
+  - 「リンク」見出しの下に、外部サイトへのリンクを4つ置く（説明文なし・新しいタブで開く）
+      ・囲碁クラブ下地会のホームページ（https://shimojikai.wsfpro.net/）
+      ・ブログ「下地会！　プロに勝つ　囲碁次の一手」（https://igoshimojikai.hatenablog.jp/）
+      ・囲碁クラブ下地会のX（旧Twitter）（https://x.com/shimojikai2026?s=11）
+      ・「対決！　昭和棋士 VS ＡＩ」のX（旧Twitter）（https://x.com/shimojikaiura?s=11）
 ================================================================================
 -->
 <!DOCTYPE html>
@@ -103,6 +107,25 @@
       line-height: 1.5;
     }
 
+    .group-title {
+      font-size: 0.82rem;
+      color: #7a5c3a;
+      letter-spacing: 0.05em;
+      border-left: 4px solid #b89752;
+      padding-left: 8px;
+      margin: 26px 0 10px;
+    }
+
+    .link-card {
+      padding: 14px 18px;
+      margin-bottom: 10px;
+    }
+
+    .link-card .title {
+      font-size: 0.98rem;
+      margin-bottom: 0;
+    }
+
     .footer {
       margin-top: 34px;
       text-align: center;
@@ -125,12 +148,19 @@
     </div>
   </a>
 
-  <a class="card" href="https://shimojikai.wsfpro.net/" target="_blank" rel="noopener noreferrer">
-    <div class="title">⚫ 囲碁クラブ下地会</div>
-    <div class="desc">
-      囲碁クラブ下地会のホームページを開きます。
-    </div>
-  </a>
+  <div class="group-title">🔗 リンク（外部サイトが開きます）</div>
+    <a class="card link-card" href="https://shimojikai.wsfpro.net/" target="_blank" rel="noopener noreferrer">
+      <div class="title">⚫ 囲碁クラブ下地会のホームページ</div>
+    </a>
+    <a class="card link-card" href="https://igoshimojikai.hatenablog.jp/" target="_blank" rel="noopener noreferrer">
+      <div class="title">📝 ブログ「下地会！　プロに勝つ　囲碁次の一手」</div>
+    </a>
+    <a class="card link-card" href="https://x.com/shimojikai2026?s=11" target="_blank" rel="noopener noreferrer">
+      <div class="title">𝕏 囲碁クラブ下地会のX（旧Twitter）</div>
+    </a>
+    <a class="card link-card" href="https://x.com/shimojikaiura?s=11" target="_blank" rel="noopener noreferrer">
+      <div class="title">𝕏 「対決！　昭和棋士 VS ＡＩ」のX（旧Twitter）</div>
+    </a>
 
   <div class="footer">
     GitHub Pages + Firebase
