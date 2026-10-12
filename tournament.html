@@ -83,9 +83,9 @@
     両者揃った枠はタップで勝者選択できる。勝ち上がった経路だけ赤で表示され、
     負けた側はグレーのまま残るので、誰が勝ったかが一目でわかる）
   - 順位表示（トーナメント図の下に優勝〜8位を一覧表示。各対局者の大石道場杯段位も
-    併記される。未定の順位は「未定」。1・2位は昇段、7・8位は降段のバッジ表示）
-  - 今回の成績（🏆トーナメントタブ。今大会での対局者ごとの勝敗数・勝率を表示。
-    決着済みの対局のみを集計し、勝ち数が多い順に並ぶ）
+    併記される。未定の順位は「未定」。1・2位は昇段、7・8位は降段のバッジ表示。
+    順位が決まった対局者の行の右端には、今大会の勝敗数（例：3勝0敗）を薄く添える。
+    別枠の「今回の成績」は重複するため廃止した。大会途中の勝敗は、トーナメント図で確認する）
   - 全員の次回大石道場杯段位一覧（1・2位＝昇段／7・8位＝降段／3〜6位＝変更なしを反映。
     「新しい大会にする」時に名簿へ直接反映される。今回の対局者に段位が1人も設定されて
     いない場合は、この一覧と、順位の昇段・降段の注記・バッジを非表示にする）
@@ -1082,36 +1082,24 @@ function renderBracket() {
   if (hasAnyRank) {
     html += `<p class="note" style="margin-top:-2px">1・2位は昇段、7・8位は降段です。</p>`;
   }
+  const tally = tallyTournamentRecord(state.players, state.results);
   html += placements.map(p => {
     const rank = getPlayerRank(p.name);
     const badge = (p.name && hasAnyRank) ? rankChangeBadgeHTML(p.rank) : "";
     const nameHTML = p.name
       ? escapeHtml(p.name) + (rank ? ` <span style="font-weight:normal;color:#b89752;font-size:0.8rem">${escapeHtml(rank)}</span>` : "") + badge
       : '<span style="color:#bbb;font-weight:normal">未定</span>';
+    const t = p.name ? tally[p.name] : null;
+    const recHTML = t ? `<div style="font-size:0.8rem;color:#999;white-space:nowrap;flex-shrink:0">${t.wins}勝${t.losses}敗</div>` : "";
     return `
     <div class="standings-row">
       <div class="standings-num">${p.medal}</div>
-      <div class="standings-name">${nameHTML}</div>
+      <div class="standings-name" style="flex:1">${nameHTML}</div>
+      ${recHTML}
     </div>`;
   }).join("");
 
-  // ===== 今回の成績（勝敗数） =====
-  const tally = tallyTournamentRecord(state.players, state.results);
-  const tallyRows = state.players.filter(p => p).map(p => {
-    const t = tally[p] || { wins: 0, losses: 0 };
-    return { name: p, wins: t.wins, losses: t.losses };
-  }).sort((a, b) => b.wins - a.wins || a.losses - b.losses);
-  html += `<h4 class="section-head">🥊 今回の成績</h4>`;
-  if (tallyRows.every(r => r.wins === 0 && r.losses === 0)) {
-    html += `<p style="color:#999;font-size:0.88rem">まだ対局結果がありません。</p>`;
-  } else {
-    html += tallyRows.map(r => `
-    <div class="standings-row">
-      <div class="standings-name" style="flex:1">${escapeHtml(r.name)}</div>
-      <div style="font-size:0.86rem;color:#666;white-space:nowrap;flex-shrink:0">${r.wins}勝 ${r.losses}敗${winRateStr(r.wins, r.losses)}</div>
-    </div>`).join("");
-  }
-
+  // ===== （旧「今回の成績」は順位表に統合済み） =====
   // ===== 全員の次回大石道場杯段位 =====
   // 順位が決まった対局者は1・2位＝昇段／7・8位＝降段／3〜6位＝変更なしを反映し、
   // まだ順位が決まっていない対局者は「未定」と表示する。
