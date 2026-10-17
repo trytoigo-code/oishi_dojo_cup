@@ -74,8 +74,8 @@
     本戦だけでなく3位・5位・7位決定戦の図でも同様にタップで選択できる）
   - 決勝の棋譜URL（🏆トーナメントタブの本戦の図の下。①つぶや棋譜・②棋譜見てねの2つを
     任意で登録・修正・削除できる（どちらか一方だけでも可。星取 igo.html と同じ2種類）。
-    登録すると「📄棋譜①」（緑）・「📄棋譜②」（青）のバッジが出て、タップで新規タブに開く。
-    保存先は state.finalKifu（url／url2）。「新しい大会にする」でアーカイブに一緒に保存され、
+    登録すると「📄棋譜①」（緑）・「📄棋譜②」（青）・「📄下地会ブログ」（青緑）のバッジが出て、タップで新規タブに開く。
+    保存先は state.finalKifu（url／url2／url3。③は下地会ブログに掲載された棋譜用）。「新しい大会にする」でアーカイブに一緒に保存され、
     📚過去の大会の「結果を見る」にも読み取り専用で表示される。「結果だけリセット」では
     決勝の結果とあわせて消える。8人勝ち抜き形式のみ（スイス式には決勝がないため対象外））
   - トーナメント図（罫線でつないだブラケット表示。本戦・3位決定戦・
@@ -272,6 +272,7 @@
     padding: 7px 14px; border-radius: 16px;
   }
   .kifu-badge.b2 { background: #2f6fd0; }
+  .kifu-badge.b3 { background: #16a085; }
   .kifu-form { background: #fff; border: 1px solid #e0dbcd; border-radius: 8px; padding: 12px; }
   .kifu-form .lnk { font-size: 0.78rem; margin: 6px 0 0; }
 
@@ -481,7 +482,8 @@ const firebaseConfig = {
 function normFinalKifu(v) {
   return {
     url:  (v && typeof v.url  === "string") ? v.url  : "",
-    url2: (v && typeof v.url2 === "string") ? v.url2 : ""
+    url2: (v && typeof v.url2 === "string") ? v.url2 : "",
+    url3: (v && typeof v.url3 === "string") ? v.url3 : ""
   };
 }
 
@@ -521,7 +523,7 @@ function normalizeResults(data) {
   };
 }
 
-let state = { edition:"", eventDate:"", playerIds:["","","","","","","",""], players:["","","","","","","",""], ranks:["","","","","","","",""], results: emptyResults(), finalKifu:{ url:"", url2:"" }, format:"bracket", swissIds:[], swiss:{ rounds:null, results:[] } };
+let state = { edition:"", eventDate:"", playerIds:["","","","","","","",""], players:["","","","","","","",""], ranks:["","","","","","","",""], results: emptyResults(), finalKifu:{ url:"", url2:"", url3:"" }, format:"bracket", swissIds:[], swiss:{ rounds:null, results:[] } };
 // 決勝の棋譜URLの入力中の下書き（nullなら入力フォームは閉じている。保存するまでFirebaseには書き込まない）
 let finalKifuDraft = null;
 // スイス式の設定入力中の下書き（保存ボタンを押すまでFirebaseには書き込まない）
@@ -1029,7 +1031,8 @@ function isHttpUrl(u) { return /^https?:\/\//.test(u || ""); }
 function finalKifuLinksHTML(fk) {
   fk = normFinalKifu(fk);
   return (isHttpUrl(fk.url)  ? `<a class="kifu-badge" href="${kifuAttr(fk.url)}" target="_blank" rel="noopener noreferrer">📄 棋譜①（つぶや棋譜）</a>` : "")
-       + (isHttpUrl(fk.url2) ? `<a class="kifu-badge b2" href="${kifuAttr(fk.url2)}" target="_blank" rel="noopener noreferrer">📄 棋譜②（棋譜見てね）</a>` : "");
+       + (isHttpUrl(fk.url2) ? `<a class="kifu-badge b2" href="${kifuAttr(fk.url2)}" target="_blank" rel="noopener noreferrer">📄 棋譜②（棋譜見てね）</a>` : "")
+       + (isHttpUrl(fk.url3) ? `<a class="kifu-badge b3" href="${kifuAttr(fk.url3)}" target="_blank" rel="noopener noreferrer">📄 下地会ブログ</a>` : "");
 }
 
 function finalKifuBlockHTML() {
@@ -1040,7 +1043,8 @@ function finalKifuBlockHTML() {
         <p class="lnk"><a href="https://igo-kids.com/pk/post-kifu.php" target="_blank" rel="noopener noreferrer" style="color:#27ae60;font-weight:bold">つぶや棋譜を開く（棋譜を登録してURLを取得）</a></p></div>
       <div class="fg"><label>②棋譜見てねURL</label><input type="url" id="fk-url2" value="${escapeHtml(finalKifuDraft.url2)}" placeholder="棋譜見てねのリンクがあれば貼り付け">
         <p class="lnk"><a href="https://gokifuai.com/kifu" target="_blank" rel="noopener noreferrer" style="color:#2f6fd0;font-weight:bold">棋譜見てねを開く（棋譜を登録してURLを取得）</a></p></div>
-      <p class="note" style="margin:0 0 10px">①②のどちらか一方だけでも登録できます。両方を空欄にして保存すると、登録を取り消せます。</p>
+      <div class="fg"><label>③下地会ブログURL</label><input type="url" id="fk-url3" value="${escapeHtml(finalKifuDraft.url3)}" placeholder="下地会ブログに掲載された棋譜のURLがあれば貼り付け"></div>
+      <p class="note" style="margin:0 0 10px">①②③のどれか1つだけでも登録できます。両方を空欄にして保存すると、登録を取り消せます。</p>
       <div style="display:flex;gap:8px">
         <button type="button" class="btn" id="fk-save" style="margin:0">保存する</button>
         <button type="button" class="btn" id="fk-cancel" style="margin:0;background:#f1f0ea;color:#2c3e50">キャンセル</button>
@@ -1066,19 +1070,20 @@ function bindFinalKifuEvents() {
     renderBracket();
   });
   // 入力中の内容は下書きに保持する（他の人の更新で画面が描き直されても、入力が消えないようにするため）
-  ["fk-url", "fk-url2"].forEach(id => {
+  ["fk-url", "fk-url2", "fk-url3"].forEach(id => {
     const inp = document.getElementById(id);
-    if (inp) inp.addEventListener("input", () => { finalKifuDraft[id === "fk-url" ? "url" : "url2"] = inp.value; });
+    if (inp) inp.addEventListener("input", () => { finalKifuDraft[id === "fk-url" ? "url" : id === "fk-url2" ? "url2" : "url3"] = inp.value; });
   });
   const saveBtn = document.getElementById("fk-save");
   if (saveBtn) saveBtn.addEventListener("click", () => {
     const url  = document.getElementById("fk-url").value.trim();
     const url2 = document.getElementById("fk-url2").value.trim();
-    if ((url && !isHttpUrl(url)) || (url2 && !isHttpUrl(url2))) { showToast("URLは http〜 で始まるものを入力してください"); return; }
-    state.finalKifu = { url, url2 };
+    const url3 = document.getElementById("fk-url3").value.trim();
+    if ((url && !isHttpUrl(url)) || (url2 && !isHttpUrl(url2)) || (url3 && !isHttpUrl(url3))) { showToast("URLは http〜 で始まるものを入力してください"); return; }
+    state.finalKifu = { url, url2, url3 };
     finalKifuDraft = null;
     pushState();
-    showToast(url || url2 ? "決勝の棋譜を保存しました" : "決勝の棋譜の登録を取り消しました");
+    showToast(url || url2 || url3 ? "決勝の棋譜を保存しました" : "決勝の棋譜の登録を取り消しました");
   });
 }
 
@@ -1843,7 +1848,7 @@ document.getElementById("admin-toggle").addEventListener("click", () => {
 document.getElementById("reset-results").addEventListener("click", () => {
   if (!confirm("対局結果をすべて消去します（決勝の棋譜URLも消えます）。対局者名はそのまま残ります。よろしいですか？")) return;
   if (state.format === "swiss") { state.swiss.results = []; swActiveRound = 0; }
-  else { state.results = emptyResults(); state.finalKifu = { url:"", url2:"" }; finalKifuDraft = null; }
+  else { state.results = emptyResults(); state.finalKifu = { url:"", url2:"", url3:"" }; finalKifuDraft = null; }
   pushState();
   showToast("結果をリセットしました");
 });
@@ -1862,7 +1867,7 @@ document.getElementById("new-tournament").addEventListener("click", () => {
       endDate,
       playerIds: Array.isArray(state.playerIds) ? state.playerIds : null,
       players: state.players, ranks: state.ranks, results: state.results,
-      finalKifu: (state.finalKifu && (state.finalKifu.url || state.finalKifu.url2)) ? state.finalKifu : null
+      finalKifu: (state.finalKifu && (state.finalKifu.url || state.finalKifu.url2 || state.finalKifu.url3)) ? state.finalKifu : null
     });
   }
   // 昇段・降段結果を、対局者名簿（roster）側に直接反映する
@@ -1873,7 +1878,7 @@ document.getElementById("new-tournament").addEventListener("click", () => {
     });
     if (rosterRef) rosterRef.set(roster);
   }
-  state = { edition:"", eventDate:"", playerIds: Array.isArray(state.playerIds) ? [...state.playerIds] : ["","","","","","","",""], players: [...state.players], ranks: nextRanks, results: emptyResults(), finalKifu: { url:"", url2:"" }, format: state.format, swissIds: state.swissIds, swiss: state.swiss };
+  state = { edition:"", eventDate:"", playerIds: Array.isArray(state.playerIds) ? [...state.playerIds] : ["","","","","","","",""], players: [...state.players], ranks: nextRanks, results: emptyResults(), finalKifu: { url:"", url2:"", url3:"" }, format: state.format, swissIds: state.swissIds, swiss: state.swiss };
   finalKifuDraft = null;
   pushState();
   fillSettingsInputs();
@@ -1888,7 +1893,7 @@ document.getElementById("new-tournament").addEventListener("click", () => {
 document.getElementById("full-reset").addEventListener("click", () => {
   if (!confirm("現在の大会と、過去のアーカイブをすべて消去して真っさらに戻します（対局者名簿は残ります）。\nこの操作は取り消せません。本当によいですか？")) return;
   if (archiveRef) archiveRef.remove();
-  state = { edition:"", eventDate:"", playerIds:["","","","","","","",""], players:["","","","","","","",""], ranks:["","","","","","","",""], results: emptyResults(), finalKifu:{ url:"", url2:"" }, format:"bracket", swissIds:[], swiss:{ rounds:null, results:[] } };
+  state = { edition:"", eventDate:"", playerIds:["","","","","","","",""], players:["","","","","","","",""], ranks:["","","","","","","",""], results: emptyResults(), finalKifu:{ url:"", url2:"", url3:"" }, format:"bracket", swissIds:[], swiss:{ rounds:null, results:[] } };
   finalKifuDraft = null;
   swDirty = false; swActiveRound = 0;
   pushState();
