@@ -118,6 +118,8 @@
     アーカイブされ、📚過去の大会と全期間の通算成績にも反映される）
   - Firebase によるリアルタイム同期
   - データエクスポート（設定タブからJSONファイルとしてダウンロード。日付入りファイル名で保存）
+  - 表示回数（ヘッダーに常時表示。igo.html と同じ仕組みで、同じ端末では1日1回までカウント。
+      Firebase pageviews/tournament に保存。参考値）
 
 【今後の改良候補】
   - 8人勝ち抜きの人数可変（4人・16人など。人数自由の大会はスイス式で対応済み）
@@ -149,6 +151,7 @@
   #sync-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 5px; }
   #sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; display: inline-block; }
   #sync-label { font-size: 0.7rem; color: #aed6f1; }
+  #pageview-row { font-size: 0.68rem; color: #8ba9c2; margin-top: 3px; }
 
   #nav { display: flex; background: #f1f0ea; border-bottom: 1px solid #e0dbcd; position: sticky; top: 0; z-index: 100; }
   .tab-btn {
@@ -341,6 +344,7 @@
   <div id="header">
     <h1>🏆 大会トーナメント表</h1>
     <div id="sync-row"><span id="sync-dot"></span><span id="sync-label">接続中...</span></div>
+    <div id="pageview-row">👁 <span id="pageview-count">－</span>回表示</div>
   </div>
 
   <div id="nav">
@@ -574,6 +578,29 @@ if (isConfigured) {
   fillSettingsInputs();
   renderAll();
 }
+
+// ---------- 表示回数 ----------
+// igo.html と同じ仕組み。個人アカウントがないため「誰が見たか」は分からず、
+// 「このアプリが開かれた回数」の目安。同じ端末では1日1回までしかカウントされない
+// （localStorageに最後にカウントした日付を保存して判定）。Firebase pageviews/tournament に保存。
+(function() {
+  if (!isConfigured) return;
+  try {
+    const pvRef = firebase.database().ref("pageviews/tournament");
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+    if (localStorage.getItem("pageview_date_tournament") !== todayStr) {
+      pvRef.transaction(cur => (cur || 0) + 1, (error, committed) => {
+        if (error) { console.error("表示回数の記録に失敗しました:", error); return; }
+        if (committed) localStorage.setItem("pageview_date_tournament", todayStr);
+      });
+    }
+    pvRef.on("value", snap => {
+      const el = document.getElementById("pageview-count");
+      if (el) el.textContent = snap.val() || 0;
+    });
+  } catch (e) { console.error(e); }
+})();
 
 // state・rosterの両方が揃うたびに呼ばれる。旧形式（playerIds未保存）からの移行、
 // state.players/ranksの再計算、画面の再描画をまとめて行う。
